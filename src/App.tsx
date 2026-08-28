@@ -524,26 +524,26 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 font-sans flex flex-col selection:bg-amber-500 selection:text-slate-950">
+    <div className="min-h-screen bg-[#0B0E11] text-slate-200 font-sans flex flex-col selection:bg-[#F0B90B] selection:text-[#0B0E11]">
       {/* Top Main Navigation & Search Bar */}
-      <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md px-4 sm:px-8 py-3.5 sticky top-0 z-30 shadow-sm">
+      <header className="border-b border-[#2B313A] bg-[#1E2329]/95 backdrop-blur-md px-4 sm:px-8 py-3.5 sticky top-0 z-30 shadow-lg">
         <div className="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-4">
           {/* Geometric Brand */}
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-amber-500 rounded-sm flex items-center justify-center shadow-sm">
-              <div className="w-4 h-4 border-2 border-slate-950 rotate-45"></div>
+            <div className="w-8 h-8 bg-[#F0B90B] rounded-[3px] flex items-center justify-center shadow-[0_0_12px_rgba(240,185,11,0.35)]">
+              <div className="w-4 h-4 border-2 border-[#0B0E11] rotate-45"></div>
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-bold tracking-tight text-lg text-slate-100">
-                  QUANT<span className="text-amber-500 font-light">SYNC</span>
+                  QUANT<span className="text-[#F0B90B] font-light">SYNC</span>
                 </span>
-                <span className="bg-amber-500/10 text-amber-400 border border-amber-500/30 text-[10px] font-mono font-bold px-2 py-0.5 rounded-sm uppercase tracking-wider">
+                <span className="bg-[#F0B90B]/15 text-[#F0B90B] border border-[#F0B90B]/30 text-[10px] font-mono font-bold px-2 py-0.5 rounded-[2px] uppercase tracking-wider">
                   BINANCE FUTURES LIVE
                 </span>
               </div>
-              <div className="text-[10px] text-slate-500 uppercase tracking-widest font-mono">
-                DIAGNOSTICS & QUANTITATIVE MATRIX
+              <div className="text-[10px] text-slate-400 uppercase tracking-widest font-mono">
+                BINANCE QUANTITATIVE ANALYZER
               </div>
             </div>
           </div>
@@ -557,11 +557,11 @@ export default function App() {
               }}
               className={`py-2 px-1 border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                 activeTab === 'binance'
-                  ? 'border-amber-500 text-slate-100 font-bold'
+                  ? 'border-[#F0B90B] text-[#F0B90B] font-bold'
                   : 'border-transparent text-slate-400 hover:text-slate-200'
               }`}
             >
-              <Wallet className="w-3.5 h-3.5 text-amber-400" />
+              <Wallet className="w-3.5 h-3.5 text-[#F0B90B]" />
               <span>Mi Cuenta Binance</span>
             </button>
 
@@ -569,7 +569,7 @@ export default function App() {
               onClick={() => setActiveTab('analysis')}
               className={`py-2 px-1 border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                 activeTab === 'analysis'
-                  ? 'border-amber-500 text-slate-100 font-bold'
+                  ? 'border-[#F0B90B] text-[#F0B90B] font-bold'
                   : 'border-transparent text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -581,14 +581,14 @@ export default function App() {
               onClick={() => setActiveTab('tradfi_scanner')}
               className={`py-2 px-1 border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                 activeTab === 'tradfi_scanner'
-                  ? 'border-amber-500 text-slate-100 font-bold'
+                  ? 'border-[#F0B90B] text-[#F0B90B] font-bold'
                   : 'border-transparent text-slate-400 hover:text-slate-200'
               }`}
             >
-              <Landmark className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+              <Landmark className="w-3.5 h-3.5 text-[#F0B90B] animate-pulse" />
               <span className="flex items-center gap-1.5">
                 <span>Escáner TradFiUSDT</span>
-                <span className="bg-amber-500/20 text-amber-300 text-[9px] px-1 py-0.2 rounded font-mono font-bold border border-amber-500/30">
+                <span className="bg-[#F0B90B]/20 text-[#F0B90B] text-[9px] px-1 py-0.2 rounded font-mono font-bold border border-[#F0B90B]/30">
                   FUTURES
                 </span>
               </span>
@@ -598,14 +598,14 @@ export default function App() {
               onClick={() => setActiveTab('tradfi')}
               className={`py-2 px-1 border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                 activeTab === 'tradfi'
-                  ? 'border-amber-500 text-slate-100 font-bold'
+                  ? 'border-[#F0B90B] text-[#F0B90B] font-bold'
                   : 'border-transparent text-slate-400 hover:text-slate-200'
               }`}
             >
-              <Globe className="w-3.5 h-3.5 text-amber-400" />
+              <Globe className="w-3.5 h-3.5 text-[#F0B90B]" />
               <span className="flex items-center gap-1">
                 <span>TradFi & Macro</span>
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span className="w-1.5 h-1.5 rounded-full bg-[#0ECB81] animate-pulse"></span>
               </span>
             </button>
 
@@ -613,7 +613,7 @@ export default function App() {
               onClick={() => setActiveTab('scanner')}
               className={`py-2 px-1 border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                 activeTab === 'scanner'
-                  ? 'border-amber-500 text-slate-100 font-bold'
+                  ? 'border-[#F0B90B] text-[#F0B90B] font-bold'
                   : 'border-transparent text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -625,7 +625,7 @@ export default function App() {
               onClick={() => setActiveTab('journal')}
               className={`py-2 px-1 border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                 activeTab === 'journal'
-                  ? 'border-amber-500 text-slate-100 font-bold'
+                  ? 'border-[#F0B90B] text-[#F0B90B] font-bold'
                   : 'border-transparent text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -646,22 +646,23 @@ export default function App() {
                   if (e.key === 'Enter') runAutoAnalyze();
                 }}
                 placeholder="Ej: BTCUSDT"
-                className="w-full bg-slate-900 border border-slate-800 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-xs text-slate-100 font-mono uppercase tracking-wider placeholder:text-slate-600 transition-colors"
+                className="w-full bg-[#14171A] border border-[#2B313A] focus:border-[#F0B90B] focus:outline-none rounded-lg px-3 py-2 text-xs text-slate-100 font-mono uppercase tracking-wider placeholder:text-slate-500 transition-colors"
               />
             </div>
 
             <button
               onClick={handleValidateSymbol}
-              className="bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 text-xs px-3 py-2 rounded-lg font-semibold uppercase tracking-wider cursor-pointer transition-colors"
+              className="bg-[#14171A] hover:bg-[#2B313A] border border-[#2B313A] text-slate-300 text-xs px-3 py-2 rounded-lg font-semibold uppercase tracking-wider cursor-pointer transition-colors"
             >
               Validar
             </button>
 
+            {/* Dynamic Binance Yellow Action Button */}
             <button
               id="btnAuto"
               onClick={() => runAutoAnalyze()}
               disabled={isLoadingMarket}
-              className="bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 text-xs px-4 py-2 rounded-lg font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm transition-all cursor-pointer active:scale-95"
+              className="bg-[#F0B90B] hover:bg-[#F0B90B]/90 disabled:opacity-50 text-[#0B0E11] text-xs px-4 py-2 rounded-lg font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-[0_0_12px_rgba(240,185,11,0.3)] hover:shadow-[0_0_18px_rgba(240,185,11,0.5)] transition-all cursor-pointer active:scale-95"
             >
               <Zap className={`w-3.5 h-3.5 ${isLoadingMarket ? 'animate-spin' : ''}`} />
               <span>{isLoadingMarket ? 'Cargando...' : 'Auto-Analizar'}</span>
@@ -671,7 +672,7 @@ export default function App() {
             <button
               onClick={handleDisconnect}
               title="Desconectar Claves de Binance"
-              className="bg-slate-900 hover:bg-red-950/60 border border-slate-800 hover:border-red-500/40 text-slate-400 hover:text-red-300 text-xs px-2.5 py-2 rounded-lg font-mono flex items-center gap-1.5 cursor-pointer transition-colors"
+              className="bg-[#14171A] hover:bg-red-950/60 border border-[#2B313A] hover:border-red-500/40 text-slate-400 hover:text-red-300 text-xs px-2.5 py-2 rounded-lg font-mono flex items-center gap-1.5 cursor-pointer transition-colors"
             >
               <LogOut className="w-3.5 h-3.5 text-slate-400 hover:text-red-400" />
               <span className="hidden xl:inline">Salir</span>
@@ -681,17 +682,17 @@ export default function App() {
       </header>
 
       {/* Simultaneous Macro Ticker Ribbon (Always Visible Across All Tabs) */}
-      <section className="bg-slate-900/90 border-b border-slate-800/80 px-4 sm:px-8 py-2 overflow-x-auto">
+      <section className="bg-[#14171A] border-b border-[#2B313A] px-4 sm:px-8 py-2 overflow-x-auto">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 text-xs font-mono">
           <div className="flex items-center gap-3 flex-shrink-0">
             <div
               onClick={() => setActiveTab('tradfi')}
-              className="flex items-center gap-1.5 text-amber-400 hover:text-amber-300 font-bold uppercase tracking-wider cursor-pointer select-none"
+              className="flex items-center gap-1.5 text-[#F0B90B] hover:text-[#F0B90B]/80 font-bold uppercase tracking-wider cursor-pointer select-none"
             >
               <Globe className="w-3.5 h-3.5" />
               <span>TradFi Live:</span>
             </div>
-            <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold px-1.5 py-0.5 rounded-sm uppercase tracking-wider">
+            <span className="bg-[#0ECB81]/15 text-[#0ECB81] border border-[#0ECB81]/30 text-[10px] font-bold px-1.5 py-0.5 rounded-[2px] uppercase tracking-wider">
               RISK-ON
             </span>
           </div>
@@ -699,54 +700,54 @@ export default function App() {
           <div className="flex items-center gap-5 overflow-x-auto whitespace-nowrap text-[11px] text-slate-300 py-0.5">
             {/* DXY */}
             <div className="flex items-center gap-1.5">
-              <span className="text-slate-500">DXY:</span>
-              <span className="font-bold text-slate-200">104.18</span>
-              <span className="text-emerald-400 font-bold flex items-center text-[10px]">
+              <span className="text-slate-400">DXY:</span>
+              <span className="font-bold text-slate-200 tabular-nums">104.18</span>
+              <span className="text-[#0ECB81] font-bold flex items-center text-[10px] tabular-nums">
                 <ArrowDownRight className="w-3 h-3" /> -0.38%
               </span>
             </div>
 
             {/* S&P 500 */}
             <div className="flex items-center gap-1.5">
-              <span className="text-slate-500">S&P 500:</span>
-              <span className="font-bold text-slate-200">5,864.2</span>
-              <span className="text-emerald-400 font-bold flex items-center text-[10px]">
+              <span className="text-slate-400">S&P 500:</span>
+              <span className="font-bold text-slate-200 tabular-nums">5,864.2</span>
+              <span className="text-[#0ECB81] font-bold flex items-center text-[10px] tabular-nums">
                 <ArrowUpRight className="w-3 h-3" /> +0.74%
               </span>
             </div>
 
             {/* NASDAQ */}
             <div className="flex items-center gap-1.5">
-              <span className="text-slate-500">NASDAQ:</span>
-              <span className="font-bold text-slate-200">20,420.5</span>
-              <span className="text-emerald-400 font-bold flex items-center text-[10px]">
+              <span className="text-slate-400">NASDAQ:</span>
+              <span className="font-bold text-slate-200 tabular-nums">20,420.5</span>
+              <span className="text-[#0ECB81] font-bold flex items-center text-[10px] tabular-nums">
                 <ArrowUpRight className="w-3 h-3" /> +1.15%
               </span>
             </div>
 
             {/* Gold */}
             <div className="flex items-center gap-1.5">
-              <span className="text-slate-500">Oro / PAXG:</span>
-              <span className="font-bold text-slate-200">$2,748.6</span>
-              <span className="text-emerald-400 font-bold flex items-center text-[10px]">
+              <span className="text-slate-400">Oro / PAXG:</span>
+              <span className="font-bold text-slate-200 tabular-nums">$2,748.6</span>
+              <span className="text-[#0ECB81] font-bold flex items-center text-[10px] tabular-nums">
                 <ArrowUpRight className="w-3 h-3" /> +0.92%
               </span>
             </div>
 
             {/* US10Y */}
             <div className="flex items-center gap-1.5">
-              <span className="text-slate-500">US10Y:</span>
-              <span className="font-bold text-slate-200">4.185%</span>
-              <span className="text-emerald-400 font-bold flex items-center text-[10px]">
+              <span className="text-slate-400">US10Y:</span>
+              <span className="font-bold text-slate-200 tabular-nums">4.185%</span>
+              <span className="text-[#0ECB81] font-bold flex items-center text-[10px] tabular-nums">
                 <ArrowDownRight className="w-3 h-3" /> -1.20%
               </span>
             </div>
 
             {/* USDT.D */}
             <div className="flex items-center gap-1.5">
-              <span className="text-slate-500">USDT.D:</span>
-              <span className="font-bold text-slate-200">4.82%</span>
-              <span className="text-emerald-400 font-bold flex items-center text-[10px]">
+              <span className="text-slate-400">USDT.D:</span>
+              <span className="font-bold text-slate-200 tabular-nums">4.82%</span>
+              <span className="text-[#0ECB81] font-bold flex items-center text-[10px] tabular-nums">
                 <ArrowDownRight className="w-3 h-3" /> -0.85%
               </span>
             </div>
@@ -754,7 +755,7 @@ export default function App() {
 
           <button
             onClick={() => setActiveTab('tradfi')}
-            className="text-[10px] text-amber-400 hover:text-amber-300 font-bold uppercase tracking-wider underline underline-offset-2 flex-shrink-0 cursor-pointer hidden md:block"
+            className="text-[10px] text-[#F0B90B] hover:text-[#F0B90B]/80 font-bold uppercase tracking-wider underline underline-offset-2 flex-shrink-0 cursor-pointer hidden md:block"
           >
             Abrir Matriz Completa →
           </button>
@@ -768,10 +769,10 @@ export default function App() {
           <div
             className={`w-2 h-2 rounded-full ${
               symbolValidationMsg.type === 'error'
-                ? 'bg-red-500'
+                ? 'bg-[#F6465D]'
                 : symbolValidationMsg.type === 'validating'
-                ? 'bg-amber-400 animate-spin'
-                : 'bg-emerald-500 animate-pulse'
+                ? 'bg-[#F0B90B] animate-spin'
+                : 'bg-[#0ECB81] animate-pulse'
             }`}
           />
           <span className="font-mono text-[11px] uppercase tracking-wider">{symbolValidationMsg.text}</span>

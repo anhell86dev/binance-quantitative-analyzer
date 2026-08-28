@@ -438,13 +438,15 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
   const countSqueeze = items.filter(i => i.bollingerSqueeze).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* 1. Header & Live Controls */}
-      <div className="border border-slate-800 bg-slate-900/90 rounded-xl p-5 shadow-lg relative overflow-hidden">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 pb-4 border-b border-slate-800">
+      <div className="border border-[#2B313A] bg-[#1E2329] rounded-xl p-5 shadow-xl relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-[#F0B90B] via-[#F0B90B]/50 to-transparent"></div>
+
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 pb-4 border-b border-[#2B313A]">
           <div>
             <div className="flex items-center gap-2.5">
-              <div className="p-2 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-400">
+              <div className="p-2 bg-[#F0B90B]/10 border border-[#F0B90B]/30 rounded-lg text-[#F0B90B]">
                 <Coins className="w-5 h-5 animate-pulse" />
               </div>
               <div>
@@ -452,7 +454,7 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
                   <h2 className="text-base font-bold text-slate-100 uppercase tracking-wider font-mono">
                     Escáner Multi-Temporal Cripto & Binance Futuros
                   </h2>
-                  <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-mono font-bold px-2 py-0.5 rounded-sm uppercase tracking-wider">
+                  <span className="bg-[#0ECB81]/15 text-[#0ECB81] border border-[#0ECB81]/30 text-[10px] font-mono font-bold px-2 py-0.5 rounded-[2px] uppercase tracking-wider tabular-nums">
                     {items.length} PARES ACTIVOS
                   </span>
                 </div>
@@ -468,8 +470,8 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
               onClick={() => setSoundEnabled(!soundEnabled)}
               className={`p-2 rounded-lg border text-xs font-mono flex items-center gap-1.5 cursor-pointer transition-colors ${
                 soundEnabled
-                  ? 'bg-amber-500/10 border-amber-500/40 text-amber-300'
-                  : 'bg-slate-800 border-slate-700 text-slate-500'
+                  ? 'bg-[#F0B90B]/15 border-[#F0B90B]/40 text-[#F0B90B]'
+                  : 'bg-[#14171A] border-[#2B313A] text-slate-500'
               }`}
               title={soundEnabled ? 'Alertas de audio activadas' : 'Alertas silenciadas'}
             >
@@ -479,7 +481,7 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
             <button
               onClick={runFullScan}
               disabled={isScanning}
-              className="bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 text-xs px-3.5 py-2 rounded-lg font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+              className="bg-[#14171A] hover:bg-[#F0B90B] hover:text-[#0B0E11] text-[#F0B90B] border border-[#2B313A] hover:border-[#F0B90B] text-xs px-3.5 py-2 rounded-lg font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm transition-all cursor-pointer disabled:opacity-50 active:scale-95"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin' : ''}`} />
               <span>{isScanning ? 'Escaneando...' : 'Escanear Ahora'}</span>
@@ -489,11 +491,11 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
 
         {/* 2. THE 3 CORE STRATEGY PRESET BUTTONS (Primary User Request) */}
         <div className="mt-4 pt-1">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-mono uppercase tracking-widest text-slate-300 font-bold flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Estrategias Cuantitativas de Mercado
+          <div className="flex items-center justify-between mb-2.5">
+            <span className="text-xs font-mono uppercase tracking-wider text-slate-300 font-bold flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-[#F0B90B]" /> Estrategias Cuantitativas de Mercado
             </span>
-            <span className="text-[10px] text-slate-500 font-mono">
+            <span className="text-[10px] text-slate-400 font-mono">
               Filtros multi-factor (Descriptivo + Técnico + Fundamental)
             </span>
           </div>
@@ -504,20 +506,20 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
               onClick={() => setStrategyPreset(strategyPreset === 'BREAKOUTS' ? 'ALL' : 'BREAKOUTS')}
               className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
                 strategyPreset === 'BREAKOUTS'
-                  ? 'bg-amber-500/15 border-amber-500 text-white shadow-lg ring-1 ring-amber-500/40'
-                  : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-900/60'
+                  ? 'bg-[#F0B90B]/15 border-[#F0B90B] text-white shadow-lg ring-1 ring-[#F0B90B]/50'
+                  : 'bg-[#14171A] border-[#2B313A] text-slate-300 hover:border-[#F0B90B]/50 hover:bg-[#181D23]'
               }`}
             >
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400">
+                  <div className="p-1.5 rounded-lg bg-[#F0B90B]/20 text-[#F0B90B]">
                     <Flame className="w-4 h-4" />
                   </div>
-                  <span className="text-xs font-bold font-mono tracking-tight text-amber-300">
+                  <span className="text-xs font-bold font-mono tracking-tight text-[#F0B90B]">
                     1. Rupturas de Momento (Breakouts)
                   </span>
                 </div>
-                <span className="bg-amber-500/20 text-amber-300 text-[10px] font-mono font-bold px-2 py-0.5 rounded border border-amber-500/30">
+                <span className="bg-[#F0B90B]/20 text-[#F0B90B] text-[10px] font-mono font-bold px-2 py-0.5 rounded border border-[#F0B90B]/30 tabular-nums">
                   {breakoutCount} Coincidencias
                 </span>
               </div>
@@ -532,7 +534,7 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
               className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
                 strategyPreset === 'SWING_PULLBACKS'
                   ? 'bg-cyan-500/15 border-cyan-500 text-white shadow-lg ring-1 ring-cyan-500/40'
-                  : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-900/60'
+                  : 'bg-[#14171A] border-[#2B313A] text-slate-300 hover:border-cyan-500/50 hover:bg-[#181D23]'
               }`}
             >
               <div className="flex items-center justify-between mb-1.5">
@@ -544,7 +546,7 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
                     2. Retrocesos en Tendencia (Swing Pullbacks)
                   </span>
                 </div>
-                <span className="bg-cyan-500/20 text-cyan-300 text-[10px] font-mono font-bold px-2 py-0.5 rounded border border-cyan-500/30">
+                <span className="bg-cyan-500/20 text-cyan-300 text-[10px] font-mono font-bold px-2 py-0.5 rounded border border-cyan-500/30 tabular-nums">
                   {pullbackCount} Coincidencias
                 </span>
               </div>
@@ -558,20 +560,20 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
               onClick={() => setStrategyPreset(strategyPreset === 'GROWTH_CANSLIM' ? 'ALL' : 'GROWTH_CANSLIM')}
               className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
                 strategyPreset === 'GROWTH_CANSLIM'
-                  ? 'bg-emerald-500/15 border-emerald-500 text-white shadow-lg ring-1 ring-emerald-500/40'
-                  : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-900/60'
+                  ? 'bg-[#0ECB81]/15 border-[#0ECB81] text-white shadow-lg ring-1 ring-[#0ECB81]/40'
+                  : 'bg-[#14171A] border-[#2B313A] text-slate-300 hover:border-[#0ECB81]/50 hover:bg-[#181D23]'
               }`}
             >
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
+                  <div className="p-1.5 rounded-lg bg-[#0ECB81]/20 text-[#0ECB81]">
                     <BarChart3 className="w-4 h-4" />
                   </div>
-                  <span className="text-xs font-bold font-mono tracking-tight text-emerald-300">
+                  <span className="text-xs font-bold font-mono tracking-tight text-[#0ECB81]">
                     3. Crecimiento Fuertes (CANSLIM)
                   </span>
                 </div>
-                <span className="bg-emerald-500/20 text-emerald-300 text-[10px] font-mono font-bold px-2 py-0.5 rounded border border-emerald-500/30">
+                <span className="bg-[#0ECB81]/20 text-[#0ECB81] text-[10px] font-mono font-bold px-2 py-0.5 rounded border border-[#0ECB81]/30 tabular-nums">
                   {canslimCount} Coincidencias
                 </span>
               </div>
@@ -583,16 +585,16 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
         </div>
 
         {/* 3. Categories Bar & Search */}
-        <div className="mt-4 pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
+        <div className="mt-4 pt-3 border-t border-[#2B313A] flex flex-wrap items-center justify-between gap-3">
           {/* Category Chips */}
           <div className="flex flex-wrap items-center gap-1.5 text-xs font-mono">
-            <span className="text-[10px] text-slate-500 uppercase tracking-widest mr-1">Sector:</span>
+            <span className="text-[10px] text-slate-400 uppercase tracking-widest mr-1">Sector:</span>
             <button
               onClick={() => setSelectedCategoryId('ALL')}
               className={`px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer ${
                 selectedCategoryId === 'ALL'
-                  ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold'
-                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                  ? 'bg-[#F0B90B] text-[#0B0E11] border-[#F0B90B] font-bold shadow-sm'
+                  : 'bg-[#14171A] border-[#2B313A] text-slate-400 hover:text-slate-200'
               }`}
             >
               Todos ({ALL_WATCHLIST.length})
@@ -603,8 +605,8 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
                 onClick={() => setSelectedCategoryId(cat.id)}
                 className={`px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer ${
                   selectedCategoryId === cat.id
-                    ? 'bg-slate-800 text-amber-300 border-amber-500/50 shadow-sm'
-                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                    ? 'bg-[#1E2329] text-[#F0B90B] border-[#F0B90B]/50 shadow-sm'
+                    : 'bg-[#14171A] border-[#2B313A] text-slate-400 hover:text-slate-200'
                 }`}
               >
                 {cat.shortName}
@@ -620,23 +622,23 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
               placeholder="Buscar símbolo (TAO, BTC, SOL)..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs font-mono text-white placeholder:text-slate-600 focus:outline-none focus:border-amber-400"
+              className="w-full bg-[#14171A] border border-[#2B313A] rounded-lg pl-8 pr-3 py-1.5 text-xs font-mono text-white placeholder:text-slate-500 focus:outline-none focus:border-[#F0B90B] transition-colors"
             />
           </div>
         </div>
       </div>
 
       {/* 4. BOTONES DE FILTRADO RÁPIDO (Directly above the Table) */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 shadow-md">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-800/80 mb-3">
+      <div className="bg-[#1E2329] border border-[#2B313A] rounded-xl p-3.5 shadow-md">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-[#2B313A] mb-3">
           <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-amber-400" />
+            <Filter className="w-4 h-4 text-[#F0B90B]" />
             <span className="text-xs font-bold font-mono text-slate-200 uppercase tracking-wider">
               Filtros Rápidos Cuantitativos
             </span>
           </div>
           <span className="text-[11px] font-mono text-slate-400">
-            Mostrando <strong className="text-amber-300">{sortedItems.length}</strong> de <strong className="text-slate-300">{items.length}</strong> criptoactivos
+            Mostrando <strong className="text-[#F0B90B]">{sortedItems.length}</strong> de <strong className="text-slate-300">{items.length}</strong> criptoactivos
           </span>
         </div>
 
@@ -646,12 +648,12 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
             onClick={() => setStrategyPreset('ALL')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
               strategyPreset === 'ALL'
-                ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md ring-1 ring-amber-400'
-                : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-white hover:border-slate-700'
+                ? 'bg-[#F0B90B] text-[#0B0E11] border-[#F0B90B] shadow-[0_0_12px_rgba(240,185,11,0.3)]'
+                : 'bg-[#14171A] border-[#2B313A] text-slate-300 hover:text-[#F0B90B] hover:border-[#F0B90B]/50'
             }`}
           >
             <span>Todos</span>
-            <span className={`text-[10px] px-1.5 py-0.2 rounded font-mono ${strategyPreset === 'ALL' ? 'bg-slate-950/20 text-slate-950 font-black' : 'bg-slate-800 text-slate-400'}`}>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded font-mono ${strategyPreset === 'ALL' ? 'bg-[#0B0E11]/20 text-[#0B0E11] font-black' : 'bg-[#2B313A] text-slate-400'}`}>
               {items.length}
             </span>
           </button>
@@ -661,13 +663,13 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
             onClick={() => setStrategyPreset(strategyPreset === 'RVOL_HIGH' ? 'ALL' : 'RVOL_HIGH')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
               strategyPreset === 'RVOL_HIGH'
-                ? 'bg-amber-500/20 text-amber-300 border-amber-400 shadow-md ring-1 ring-amber-400/50 font-black'
-                : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-amber-300 hover:border-amber-500/50'
+                ? 'bg-[#F0B90B]/20 text-[#F0B90B] border-[#F0B90B] shadow-md ring-1 ring-[#F0B90B]/50 font-black'
+                : 'bg-[#14171A] border-[#2B313A] text-slate-300 hover:text-[#F0B90B] hover:border-[#F0B90B]/50'
             }`}
           >
-            <Zap className="w-3.5 h-3.5 text-amber-400" />
+            <Zap className="w-3.5 h-3.5 text-[#F0B90B]" />
             <span>RVOL &gt; 1.5</span>
-            <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded font-mono">
+            <span className="text-[10px] bg-[#F0B90B]/20 text-[#F0B90B] border border-[#F0B90B]/30 px-1.5 py-0.2 rounded font-mono">
               {countRvol15}
             </span>
           </button>
@@ -677,13 +679,13 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
             onClick={() => setStrategyPreset(strategyPreset === 'RSI_OVERBOUGHT' ? 'ALL' : 'RSI_OVERBOUGHT')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
               strategyPreset === 'RSI_OVERBOUGHT'
-                ? 'bg-red-500/20 text-red-300 border-red-400 shadow-md ring-1 ring-red-400/50 font-black'
-                : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-red-300 hover:border-red-500/50'
+                ? 'bg-[#F6465D]/20 text-[#F6465D] border-[#F6465D] shadow-md ring-1 ring-[#F6465D]/50 font-black'
+                : 'bg-[#14171A] border-[#2B313A] text-slate-300 hover:text-[#F6465D] hover:border-[#F6465D]/50'
             }`}
           >
-            <Flame className="w-3.5 h-3.5 text-red-400" />
+            <Flame className="w-3.5 h-3.5 text-[#F6465D]" />
             <span>RSI sobrecomprado (&gt;70)</span>
-            <span className="text-[10px] bg-red-500/20 text-red-300 border border-red-500/30 px-1.5 py-0.2 rounded font-mono">
+            <span className="text-[10px] bg-[#F6465D]/20 text-[#F6465D] border border-[#F6465D]/30 px-1.5 py-0.2 rounded font-mono">
               {countRsiOverbought}
             </span>
           </button>
@@ -693,13 +695,13 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
             onClick={() => setStrategyPreset(strategyPreset === 'RSI_OVERSOLD' ? 'ALL' : 'RSI_OVERSOLD')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
               strategyPreset === 'RSI_OVERSOLD'
-                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400 shadow-md ring-1 ring-emerald-400/50 font-black'
-                : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-emerald-300 hover:border-emerald-500/50'
+                ? 'bg-[#0ECB81]/20 text-[#0ECB81] border-[#0ECB81] shadow-md ring-1 ring-[#0ECB81]/50 font-black'
+                : 'bg-[#14171A] border-[#2B313A] text-slate-300 hover:text-[#0ECB81] hover:border-[#0ECB81]/50'
             }`}
           >
-            <Droplets className="w-3.5 h-3.5 text-emerald-400" />
+            <Droplets className="w-3.5 h-3.5 text-[#0ECB81]" />
             <span>RSI sobrevendido (&lt;30)</span>
-            <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.2 rounded font-mono">
+            <span className="text-[10px] bg-[#0ECB81]/20 text-[#0ECB81] border border-[#0ECB81]/30 px-1.5 py-0.2 rounded font-mono">
               {countRsiOversold}
             </span>
           </button>
@@ -709,13 +711,13 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
             onClick={() => setStrategyPreset(strategyPreset === 'TREND_BULLISH' ? 'ALL' : 'TREND_BULLISH')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
               strategyPreset === 'TREND_BULLISH'
-                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400 shadow-md ring-1 ring-emerald-400/50 font-black'
-                : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-emerald-300 hover:border-emerald-500/50'
+                ? 'bg-[#0ECB81]/20 text-[#0ECB81] border-[#0ECB81] shadow-md ring-1 ring-[#0ECB81]/50 font-black'
+                : 'bg-[#14171A] border-[#2B313A] text-slate-300 hover:text-[#0ECB81] hover:border-[#0ECB81]/50'
             }`}
           >
-            <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+            <TrendingUp className="w-3.5 h-3.5 text-[#0ECB81]" />
             <span>Tendencia Alcista</span>
-            <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.2 rounded font-mono">
+            <span className="text-[10px] bg-[#0ECB81]/20 text-[#0ECB81] border border-[#0ECB81]/30 px-1.5 py-0.2 rounded font-mono">
               {countBullishTrend}
             </span>
           </button>
@@ -725,13 +727,13 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
             onClick={() => setStrategyPreset(strategyPreset === 'TREND_BEARISH' ? 'ALL' : 'TREND_BEARISH')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
               strategyPreset === 'TREND_BEARISH'
-                ? 'bg-red-500/20 text-red-300 border-red-400 shadow-md ring-1 ring-red-400/50 font-black'
-                : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-red-300 hover:border-red-500/50'
+                ? 'bg-[#F6465D]/20 text-[#F6465D] border-[#F6465D] shadow-md ring-1 ring-[#F6465D]/50 font-black'
+                : 'bg-[#14171A] border-[#2B313A] text-slate-300 hover:text-[#F6465D] hover:border-[#F6465D]/50'
             }`}
           >
-            <TrendingDown className="w-3.5 h-3.5 text-red-400" />
+            <TrendingDown className="w-3.5 h-3.5 text-[#F6465D]" />
             <span>Tendencia Bajista</span>
-            <span className="text-[10px] bg-red-500/20 text-red-300 border border-red-500/30 px-1.5 py-0.2 rounded font-mono">
+            <span className="text-[10px] bg-[#F6465D]/20 text-[#F6465D] border border-[#F6465D]/30 px-1.5 py-0.2 rounded font-mono">
               {countBearishTrend}
             </span>
           </button>
@@ -742,7 +744,7 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
             className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
               strategyPreset === 'SQUEEZE'
                 ? 'bg-purple-500/20 text-purple-300 border-purple-400 shadow-md ring-1 ring-purple-400/50 font-black'
-                : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-purple-300 hover:border-purple-500/50'
+                : 'bg-[#14171A] border-[#2B313A] text-slate-300 hover:text-purple-300 hover:border-purple-500/50'
             }`}
           >
             <Layers className="w-3.5 h-3.5 text-purple-400" />
@@ -756,11 +758,11 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
 
       {/* 5. ACTIVE STRATEGY EXPLANATION BANNER */}
       {strategyPreset !== 'ALL' && (
-        <div className="bg-slate-900/90 border border-amber-500/30 rounded-xl p-3.5 flex items-start gap-3 text-xs font-mono shadow-sm">
-          <Info className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+        <div className="bg-[#1E2329] border border-[#F0B90B]/30 rounded-xl p-3.5 flex items-start gap-3 text-xs font-mono shadow-sm">
+          <Info className="w-4 h-4 text-[#F0B90B] flex-shrink-0 mt-0.5" />
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <span className="font-bold text-amber-300 uppercase">
+              <span className="font-bold text-[#F0B90B] uppercase">
                 {strategyPreset === 'RVOL_HIGH' && 'Filtro Activo: Volumen Relativo Anormal (RVOL > 1.5x)'}
                 {strategyPreset === 'RSI_OVERBOUGHT' && 'Filtro Activo: RSI Sobrecomprado (> 70) - Riesgo de Agotamiento / Reversión'}
                 {strategyPreset === 'RSI_OVERSOLD' && 'Filtro Activo: RSI Sobrevendido (< 30) - Zona de Descuento / Rebote Swing'}
@@ -774,7 +776,7 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
                 {strategyPreset === 'VOL' && 'Filtro Activo: Volumen Inusual (RVOL ≥ 1.5x)'}
                 {strategyPreset === 'SQUEEZE' && 'Filtro Activo: Compresión de Bollinger (Squeeze)'}
               </span>
-              <span className="bg-slate-800 text-slate-300 text-[10px] px-2 py-0.2 rounded border border-slate-700">
+              <span className="bg-[#14171A] text-slate-300 text-[10px] px-2 py-0.2 rounded border border-[#2B313A] tabular-nums">
                 {sortedItems.length} activos coincidentes
               </span>
             </div>
@@ -795,7 +797,7 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
           </div>
           <button
             onClick={() => setStrategyPreset('ALL')}
-            className="text-[10px] text-amber-400 hover:text-amber-300 underline uppercase tracking-wider cursor-pointer"
+            className="text-[10px] text-[#F0B90B] hover:text-[#F0B90B]/80 underline uppercase tracking-wider cursor-pointer font-bold"
           >
             Limpiar Filtro
           </button>
@@ -803,86 +805,86 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
       )}
 
       {/* 6. TABLA DINÁMICA DE MERCADO (Formato Institucional Interactivo) */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-xl shadow-xl overflow-hidden">
+      <div className="bg-[#1E2329] border border-[#2B313A] rounded-xl shadow-xl overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs font-mono border-collapse">
+          <table className="w-full text-left text-xs font-mono border-collapse table-zebra">
             {/* Table Header con columnas ordenables */}
             <thead>
-              <tr className="bg-slate-950 border-b border-slate-800 text-slate-400 text-[11px] uppercase tracking-wider select-none">
+              <tr className="bg-[#14171A] border-b border-[#2B313A] text-slate-400 text-[11px] uppercase tracking-wider select-none">
                 {/* 1. Símbolo (Ordenable) */}
                 <th
                   onClick={() => handleSort('symbol')}
-                  className={`py-3.5 px-4 font-bold cursor-pointer transition-colors ${sortField === 'symbol' ? 'text-amber-300 bg-slate-900/80' : 'hover:text-slate-200'}`}
+                  className={`py-3.5 px-4 font-bold cursor-pointer transition-colors ${sortField === 'symbol' ? 'text-[#F0B90B] bg-[#1E2329]' : 'hover:text-slate-200'}`}
                 >
                   <div className="flex items-center gap-1.5">
                     <span>Símbolo</span>
-                    {sortField === 'symbol' ? (sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-amber-400" /> : <ChevronDown className="w-3.5 h-3.5 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                    {sortField === 'symbol' ? (sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-[#F0B90B]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#F0B90B]" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
                   </div>
                 </th>
 
                 {/* 2. Precio USD (Ordenable) */}
                 <th
                   onClick={() => handleSort('price')}
-                  className={`py-3.5 px-3 font-bold text-right cursor-pointer transition-colors ${sortField === 'price' ? 'text-amber-300 bg-slate-900/80' : 'hover:text-slate-200'}`}
+                  className={`py-3.5 px-3 font-bold text-right cursor-pointer transition-colors ${sortField === 'price' ? 'text-[#F0B90B] bg-[#1E2329]' : 'hover:text-slate-200'}`}
                 >
                   <div className="flex items-center justify-end gap-1.5">
                     <span>Precio USD</span>
-                    {sortField === 'price' ? (sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-amber-400" /> : <ChevronDown className="w-3.5 h-3.5 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                    {sortField === 'price' ? (sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-[#F0B90B]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#F0B90B]" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
                   </div>
                 </th>
 
                 {/* 3. Var 24h % (Ordenable) */}
                 <th
                   onClick={() => handleSort('change24h')}
-                  className={`py-3.5 px-3 font-bold text-right cursor-pointer transition-colors ${sortField === 'change24h' ? 'text-amber-300 bg-slate-900/80' : 'hover:text-slate-200'}`}
+                  className={`py-3.5 px-3 font-bold text-right cursor-pointer transition-colors ${sortField === 'change24h' ? 'text-[#F0B90B] bg-[#1E2329]' : 'hover:text-slate-200'}`}
                 >
                   <div className="flex items-center justify-end gap-1.5">
                     <span>24h %</span>
-                    {sortField === 'change24h' ? (sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-amber-400" /> : <ChevronDown className="w-3.5 h-3.5 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                    {sortField === 'change24h' ? (sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-[#F0B90B]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#F0B90B]" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
                   </div>
                 </th>
 
                 {/* 4. Var 1 Sem % (Ordenable) */}
                 <th
                   onClick={() => handleSort('weekChangePercent')}
-                  className={`py-3.5 px-3 font-bold text-right cursor-pointer transition-colors ${sortField === 'weekChangePercent' ? 'text-amber-300 bg-slate-900/80' : 'hover:text-slate-200'}`}
+                  className={`py-3.5 px-3 font-bold text-right cursor-pointer transition-colors ${sortField === 'weekChangePercent' ? 'text-[#F0B90B] bg-[#1E2329]' : 'hover:text-slate-200'}`}
                 >
                   <div className="flex items-center justify-end gap-1.5">
                     <span>1 Sem %</span>
-                    {sortField === 'weekChangePercent' ? (sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-amber-400" /> : <ChevronDown className="w-3.5 h-3.5 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                    {sortField === 'weekChangePercent' ? (sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-[#F0B90B]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#F0B90B]" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
                   </div>
                 </th>
 
                 {/* 5. RVOL (Ordenable) */}
                 <th
                   onClick={() => handleSort('rvol')}
-                  className={`py-3.5 px-3 font-bold text-center cursor-pointer transition-colors ${sortField === 'rvol' ? 'text-amber-300 bg-slate-900/80' : 'hover:text-slate-200'}`}
+                  className={`py-3.5 px-3 font-bold text-center cursor-pointer transition-colors ${sortField === 'rvol' ? 'text-[#F0B90B] bg-[#1E2329]' : 'hover:text-slate-200'}`}
                 >
                   <div className="flex items-center justify-center gap-1.5">
                     <span>RVOL</span>
-                    {sortField === 'rvol' ? (sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-amber-400" /> : <ChevronDown className="w-3.5 h-3.5 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                    {sortField === 'rvol' ? (sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-[#F0B90B]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#F0B90B]" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
                   </div>
                 </th>
 
                 {/* 6. RSI (14) (Ordenable) */}
                 <th
                   onClick={() => handleSort('rsi14d')}
-                  className={`py-3.5 px-3 font-bold text-center cursor-pointer transition-colors ${sortField === 'rsi14d' ? 'text-amber-300 bg-slate-900/80' : 'hover:text-slate-200'}`}
+                  className={`py-3.5 px-3 font-bold text-center cursor-pointer transition-colors ${sortField === 'rsi14d' ? 'text-[#F0B90B] bg-[#1E2329]' : 'hover:text-slate-200'}`}
                 >
                   <div className="flex items-center justify-center gap-1.5">
                     <span>RSI (14)</span>
-                    {sortField === 'rsi14d' ? (sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-amber-400" /> : <ChevronDown className="w-3.5 h-3.5 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                    {sortField === 'rsi14d' ? (sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-[#F0B90B]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#F0B90B]" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
                   </div>
                 </th>
 
                 {/* 7. Tendencia (Ordenable) */}
                 <th
                   onClick={() => handleSort('trend')}
-                  className={`py-3.5 px-3 font-bold text-center cursor-pointer transition-colors ${sortField === 'trend' ? 'text-amber-300 bg-slate-900/80' : 'hover:text-slate-200'}`}
+                  className={`py-3.5 px-3 font-bold text-center cursor-pointer transition-colors ${sortField === 'trend' ? 'text-[#F0B90B] bg-[#1E2329]' : 'hover:text-slate-200'}`}
                 >
                   <div className="flex items-center justify-center gap-1.5">
                     <span>Tendencia</span>
-                    {sortField === 'trend' ? (sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-amber-400" /> : <ChevronDown className="w-3.5 h-3.5 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                    {sortField === 'trend' ? (sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-[#F0B90B]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#F0B90B]" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
                   </div>
                 </th>
 
@@ -899,22 +901,22 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
                 {/* 10. Cap. Mercado (Ordenable) */}
                 <th
                   onClick={() => handleSort('marketCap')}
-                  className={`py-3.5 px-3 font-bold text-right cursor-pointer transition-colors ${sortField === 'marketCap' ? 'text-amber-300 bg-slate-900/80' : 'hover:text-slate-200'}`}
+                  className={`py-3.5 px-3 font-bold text-right cursor-pointer transition-colors ${sortField === 'marketCap' ? 'text-[#F0B90B] bg-[#1E2329]' : 'hover:text-slate-200'}`}
                 >
                   <div className="flex items-center justify-end gap-1.5">
                     <span>Cap. Mercado</span>
-                    {sortField === 'marketCap' ? (sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-amber-400" /> : <ChevronDown className="w-3.5 h-3.5 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                    {sortField === 'marketCap' ? (sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-[#F0B90B]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#F0B90B]" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
                   </div>
                 </th>
 
                 {/* 11. Crecimiento / CANSLIM (Ordenable) */}
                 <th
                   onClick={() => handleSort('epsGrowthYear')}
-                  className={`py-3.5 px-3 font-bold text-right cursor-pointer transition-colors ${sortField === 'epsGrowthYear' ? 'text-amber-300 bg-slate-900/80' : 'hover:text-slate-200'}`}
+                  className={`py-3.5 px-3 font-bold text-right cursor-pointer transition-colors ${sortField === 'epsGrowthYear' ? 'text-[#F0B90B] bg-[#1E2329]' : 'hover:text-slate-200'}`}
                 >
                   <div className="flex items-center justify-end gap-1.5">
                     <span>Crecimiento Red</span>
-                    {sortField === 'epsGrowthYear' ? (sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-amber-400" /> : <ChevronDown className="w-3.5 h-3.5 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                    {sortField === 'epsGrowthYear' ? (sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-[#F0B90B]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#F0B90B]" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
                   </div>
                 </th>
 
@@ -931,7 +933,7 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
             </thead>
 
             {/* Table Body */}
-            <tbody className="divide-y divide-slate-800/60">
+            <tbody className="divide-y divide-[#2B313A]">
               {sortedItems.length === 0 ? (
                 <tr>
                   <td colSpan={13} className="py-12 text-center text-slate-500 font-mono">
@@ -942,7 +944,7 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
                         setSelectedCategoryId('ALL');
                         setSearchQuery('');
                       }}
-                      className="mt-3 text-xs text-amber-400 underline uppercase tracking-wider cursor-pointer"
+                      className="mt-3 text-xs text-[#F0B90B] underline uppercase tracking-wider cursor-pointer font-bold"
                     >
                       Restablecer filtros
                     </button>
@@ -957,8 +959,8 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
                   return (
                     <tr
                       key={item.symbol}
-                      className={`hover:bg-slate-800/50 transition-colors group ${
-                        isTao ? 'bg-cyan-500/5' : ''
+                      className={`hover:bg-[#2B313A]/50 transition-colors group ${
+                        isTao ? 'bg-[#F0B90B]/5' : ''
                       }`}
                     >
                       {/* 1. Símbolo */}
@@ -966,11 +968,11 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
                         <div className="flex items-center gap-2">
                           <div className="flex flex-col">
                             <div className="flex items-center gap-1.5">
-                              <span className="font-bold text-white tracking-wider text-xs">
+                              <span className="font-bold text-white tracking-wider text-xs font-mono">
                                 {item.symbol}
                               </span>
                               {isTao && (
-                                <span className="bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[8px] font-bold px-1 rounded">
+                                <span className="bg-[#F0B90B]/20 text-[#F0B90B] border border-[#F0B90B]/40 text-[8px] font-bold px-1 rounded">
                                   IA LÍDER
                                 </span>
                               )}
@@ -984,7 +986,7 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
 
                       {/* 2. Precio Actual */}
                       <td className="py-3 px-3 text-right">
-                        <div className="font-bold text-slate-100">
+                        <div className="font-bold text-slate-100 font-mono tabular-nums">
                           ${fmt(item.price, item.price > 1000 ? 2 : item.price > 1 ? 4 : 6)}
                         </div>
                       </td>
@@ -992,8 +994,8 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
                       {/* 3. Var 24h % */}
                       <td className="py-3 px-3 text-right">
                         <span
-                          className={`font-bold inline-flex items-center gap-0.5 ${
-                            item.change24h >= 0 ? 'text-emerald-400' : 'text-red-400'
+                          className={`font-bold inline-flex items-center gap-0.5 font-mono tabular-nums ${
+                            item.change24h >= 0 ? 'text-[#0ECB81]' : 'text-[#F6465D]'
                           }`}
                         >
                           {item.change24h >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
@@ -1004,8 +1006,8 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
                       {/* 4. Var 1W % */}
                       <td className="py-3 px-3 text-right">
                         <span
-                          className={`font-bold ${
-                            (item.weekChangePercent || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'
+                          className={`font-bold font-mono tabular-nums ${
+                            (item.weekChangePercent || 0) >= 0 ? 'text-[#0ECB81]' : 'text-[#F6465D]'
                           }`}
                         >
                           {(item.weekChangePercent || 0) >= 0 ? '+' : ''}{fmt(item.weekChangePercent, 2)}%
@@ -1015,12 +1017,12 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
                       {/* 5. RVOL */}
                       <td className="py-3 px-3 text-center">
                         <span
-                          className={`px-2 py-0.5 rounded font-bold text-[11px] ${
+                          className={`px-2 py-0.5 rounded font-bold text-[11px] font-mono tabular-nums ${
                             item.rvol >= 2.0
-                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black'
+                              ? 'bg-[#F0B90B]/20 text-[#F0B90B] border border-[#F0B90B]/40 font-black'
                               : item.rvol >= 1.5
-                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                              : 'bg-slate-800 text-slate-400'
+                              ? 'bg-[#0ECB81]/20 text-[#0ECB81] border border-[#0ECB81]/30'
+                              : 'bg-[#14171A] text-slate-400 border border-[#2B313A]'
                           }`}
                         >
                           {item.rvol}x
@@ -1031,24 +1033,24 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
                       <td className="py-3 px-3 text-center">
                         <div className="inline-flex flex-col items-center">
                           <span
-                            className={`font-bold ${
+                            className={`font-bold font-mono tabular-nums ${
                               (item.rsi14d || 50) <= 30
-                                ? 'text-emerald-400'
+                                ? 'text-[#0ECB81]'
                                 : (item.rsi14d || 50) >= 70
-                                ? 'text-red-400'
+                                ? 'text-[#F6465D]'
                                 : 'text-slate-300'
                             }`}
                           >
                             {item.rsi14d || 50}
                           </span>
-                          <div className="w-10 h-1 bg-slate-800 rounded-full mt-1 overflow-hidden">
+                          <div className="w-10 h-1 bg-[#14171A] rounded-full mt-1 overflow-hidden">
                             <div
                               className={`h-full ${
                                 (item.rsi14d || 50) <= 30
-                                  ? 'bg-emerald-500'
+                                  ? 'bg-[#0ECB81]'
                                   : (item.rsi14d || 50) >= 70
-                                  ? 'bg-red-500'
-                                  : 'bg-amber-500'
+                                  ? 'bg-[#F6465D]'
+                                  : 'bg-[#F0B90B]'
                               }`}
                               style={{ width: `${item.rsi14d || 50}%` }}
                             />
@@ -1061,20 +1063,20 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
                         <span
                           className={`px-2 py-0.5 rounded text-[11px] font-bold inline-flex items-center gap-1 ${
                             item.trend === 'Alcista' || item.signal === 'LONG'
-                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                              ? 'bg-[#0ECB81]/20 text-[#0ECB81] border border-[#0ECB81]/40'
                               : item.trend === 'Bajista' || item.signal === 'SHORT'
-                              ? 'bg-red-500/20 text-red-300 border border-red-500/40'
-                              : 'bg-slate-800 text-slate-400'
+                              ? 'bg-[#F6465D]/20 text-[#F6465D] border border-[#F6465D]/40'
+                              : 'bg-[#14171A] text-slate-400 border border-[#2B313A]'
                           }`}
                         >
                           {item.trend === 'Alcista' || item.signal === 'LONG' ? (
                             <>
-                              <TrendingUp className="w-3 h-3 text-emerald-400" />
+                              <TrendingUp className="w-3 h-3 text-[#0ECB81]" />
                               Alcista
                             </>
                           ) : item.trend === 'Bajista' || item.signal === 'SHORT' ? (
                             <>
-                              <TrendingDown className="w-3 h-3 text-red-400" />
+                              <TrendingDown className="w-3 h-3 text-[#F6465D]" />
                               Bajista
                             </>
                           ) : (
@@ -1085,12 +1087,12 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
 
                       {/* 8. Medias Móviles (SMA 20/50/200) */}
                       <td className="py-3 px-3 text-center">
-                        <div className="flex items-center justify-center gap-1 text-[10px]">
+                        <div className="flex items-center justify-center gap-1 text-[10px] font-mono">
                           <span
                             className={`px-1 py-0.2 rounded font-bold ${
                               item.aboveSma20
-                                ? 'bg-emerald-500/20 text-emerald-400'
-                                : 'bg-red-500/20 text-red-400'
+                                ? 'bg-[#0ECB81]/20 text-[#0ECB81]'
+                                : 'bg-[#F6465D]/20 text-[#F6465D]'
                             }`}
                           >
                             20
@@ -1098,8 +1100,8 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
                           <span
                             className={`px-1 py-0.2 rounded font-bold ${
                               item.aboveSma50
-                                ? 'bg-emerald-500/20 text-emerald-400'
-                                : 'bg-red-500/20 text-red-400'
+                                ? 'bg-[#0ECB81]/20 text-[#0ECB81]'
+                                : 'bg-[#F6465D]/20 text-[#F6465D]'
                             }`}
                           >
                             50
@@ -1107,8 +1109,8 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
                           <span
                             className={`px-1 py-0.2 rounded font-bold ${
                               item.aboveSma200
-                                ? 'bg-emerald-500/20 text-emerald-400'
-                                : 'bg-red-500/20 text-red-400'
+                                ? 'bg-[#0ECB81]/20 text-[#0ECB81]'
+                                : 'bg-[#F6465D]/20 text-[#F6465D]'
                             }`}
                           >
                             200
@@ -1119,17 +1121,17 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
                       {/* 8. Rango 52S */}
                       <td className="py-3 px-3 text-center">
                         <div className="w-20 mx-auto">
-                          <div className="flex justify-between text-[9px] text-slate-500 mb-0.5">
+                          <div className="flex justify-between text-[9px] text-slate-400 mb-0.5 font-mono tabular-nums">
                             <span>${fmt(item.low52w, item.price > 1 ? 0 : 2)}</span>
                             <span>${fmt(item.high52w, item.price > 1 ? 0 : 2)}</span>
                           </div>
-                          <div className="h-1.5 bg-slate-800 rounded-full relative overflow-hidden">
+                          <div className="h-1.5 bg-[#14171A] rounded-full relative overflow-hidden">
                             <div
-                              className="h-full bg-gradient-to-r from-cyan-500 via-amber-400 to-emerald-400 rounded-full"
+                              className="h-full bg-gradient-to-r from-cyan-500 via-[#F0B90B] to-[#0ECB81] rounded-full"
                               style={{ width: `${pos52}%` }}
                             />
                           </div>
-                          <span className="text-[9px] text-slate-400 mt-0.5 block">
+                          <span className="text-[9px] text-slate-400 mt-0.5 block font-mono tabular-nums">
                             {pos52.toFixed(0)}% máx
                           </span>
                         </div>
@@ -1137,16 +1139,16 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
 
                       {/* 9. Cap. Mercado */}
                       <td className="py-3 px-3 text-right">
-                        <div className="font-bold text-slate-200">{fmtCap(item.marketCap)}</div>
-                        <div className="text-[10px] text-slate-500">Vol 24h: {fmtCap(item.volume24h)}</div>
+                        <div className="font-bold text-slate-200 font-mono tabular-nums">{fmtCap(item.marketCap)}</div>
+                        <div className="text-[10px] text-slate-400 font-mono tabular-nums">Vol 24h: {fmtCap(item.volume24h)}</div>
                       </td>
 
                       {/* 10. Crecimiento Red */}
                       <td className="py-3 px-3 text-right">
-                        <div className="font-bold text-emerald-400">
+                        <div className="font-bold text-[#0ECB81] font-mono tabular-nums">
                           +{item.epsGrowthYear || 0}%
                         </div>
-                        <div className="text-[10px] text-slate-400">
+                        <div className="text-[10px] text-slate-400 font-mono tabular-nums">
                           ROE {item.roe || 0}% • QoQ +{item.salesGrowthQoQ || 0}%
                         </div>
                       </td>
@@ -1155,7 +1157,7 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
                       <td className="py-3 px-3 text-center">
                         <div className="flex flex-wrap items-center justify-center gap-1 max-w-[130px] mx-auto">
                           {item.isBreakout && (
-                            <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] font-bold px-1.5 py-0.5 rounded">
+                            <span className="bg-[#F0B90B]/20 text-[#F0B90B] border border-[#F0B90B]/40 text-[9px] font-bold px-1.5 py-0.5 rounded">
                               RUPTURA
                             </span>
                           )}
@@ -1165,7 +1167,7 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
                             </span>
                           )}
                           {item.isGrowthCanslim && (
-                            <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[9px] font-bold px-1.5 py-0.5 rounded">
+                            <span className="bg-[#0ECB81]/20 text-[#0ECB81] border border-[#0ECB81]/40 text-[9px] font-bold px-1.5 py-0.5 rounded">
                               CANSLIM
                             </span>
                           )}
@@ -1184,7 +1186,7 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
                       <td className="py-3 px-4 text-center">
                         <button
                           onClick={() => onSelectSymbol(item.symbol)}
-                          className="bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-slate-300 border border-slate-700 hover:border-amber-400 px-2.5 py-1 rounded text-[11px] font-bold transition-all cursor-pointer inline-flex items-center gap-1 shadow-sm"
+                          className="bg-[#14171A] hover:bg-[#F0B90B] hover:text-[#0B0E11] text-slate-300 border border-[#2B313A] hover:border-[#F0B90B] px-2.5 py-1 rounded text-[11px] font-bold transition-all cursor-pointer inline-flex items-center gap-1 shadow-sm active:scale-95"
                         >
                           <span>Analizar</span>
                           <ExternalLink className="w-3 h-3" />

@@ -1,5 +1,5 @@
 {
-  "name": "TradingView Quantitative Analyzer",
+  "name": "Binance Quantitative Analyzer",
   "description": "Herramienta de análisis cuantitativo con escáner RVOL, Open Interest, soportes/resistencias multi-temporalidad y conexión con Binance Futures.",
   "requestFramePermissions": [],
   "majorCapabilities": [

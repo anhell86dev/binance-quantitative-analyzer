@@ -3,13 +3,24 @@
 @layer base {
   body {
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background-color: #020617;
-    color: #e2e8f0;
+    background-color: #0B0E11;
+    color: #EAECEF;
   }
 
   code, kbd, samp, pre {
     font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   }
+}
+
+/* Custom Binance Dark Theme Colors & Utilities */
+:root {
+  --bg-primary: #0B0E11;
+  --bg-card: #1E2329;
+  --bg-card-alt: #181A20;
+  --border-color: #2B313A;
+  --binance-yellow: #F0B90B;
+  --binance-green: #0ECB81;
+  --binance-red: #F6465D;
 }
 
 /* Sleek geometric scrollbars */
@@ -19,14 +30,28 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #090d16;
+  background: #0B0E11;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
-  border-radius: 2px;
+  background: #2B313A;
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #f59e0b;
+  background: #F0B90B;
 }
+
+/* Zebra row table utility */
+.table-zebra tr:nth-child(even) {
+  background-color: #181A20;
+}
+
+.table-zebra tr:nth-child(odd) {
+  background-color: #1E2329;
+}
+
+.table-zebra tr:hover {
+  background-color: #262B34 !important;
+}
+
