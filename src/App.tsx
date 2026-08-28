@@ -25,6 +25,7 @@ import {
   fetchBinanceDashboard,
   executeBinanceTrade,
   fetchFundingRateData,
+  extractOpenInterestValue,
 } from './utils/marketService';
 import { KeyLevels } from './components/KeyLevels';
 import { IndicatorMatrix } from './components/IndicatorMatrix';
@@ -351,9 +352,10 @@ export default function App() {
       setFundingRateInfo(fundingData);
 
       // Open Interest
-      if (marketData.oi) {
-        setOpenInterest(marketData.oi);
-        setOiHistory(prev => [...prev.slice(-30), { value: marketData.oi!, time: Date.now() }]);
+      if (marketData.oi !== undefined && marketData.oi !== null) {
+        const numericOi = extractOpenInterestValue(marketData.oi);
+        setOpenInterest(numericOi);
+        setOiHistory(prev => [...prev.slice(-30), { value: numericOi, time: Date.now() }]);
       }
 
       // RVOL 5m

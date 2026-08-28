@@ -4,7 +4,7 @@ import { PivotLevels, TickerData } from '../types';
 interface KeyLevelsProps {
   currentPrice: number | null;
   ticker: TickerData | null;
-  openInterest: number | null;
+  openInterest: number | string | any | null;
   rvol5m: number | null;
   dayRange: { min: number; max: number } | null;
   yearRange: { min: number; max: number } | null;
@@ -24,6 +24,21 @@ export const KeyLevels: React.FC<KeyLevelsProps> = ({
 }) => {
   const fmt = (v: number | null) => (v !== null && Number.isFinite(v) ? v.toFixed(v > 1000 ? 2 : v > 1 ? 4 : 6) : '---');
   const clamp = (v: number) => Math.max(0, Math.min(100, v));
+
+  const numericOi = React.useMemo(() => {
+    if (openInterest === null || openInterest === undefined) return null;
+    if (typeof openInterest === 'number') return Number.isFinite(openInterest) ? openInterest : null;
+    if (typeof openInterest === 'string') {
+      const n = parseFloat(openInterest);
+      return Number.isFinite(n) ? n : null;
+    }
+    if (typeof openInterest === 'object') {
+      const val = (openInterest as any).value ?? (openInterest as any).openInterest;
+      const n = typeof val === 'number' ? val : parseFloat(String(val));
+      return Number.isFinite(n) ? n : null;
+    }
+    return null;
+  }, [openInterest]);
 
   const priceDiff = currentPrice && ticker ? currentPrice - Number(ticker.openPrice) : 0;
   const pricePercent = currentPrice && ticker && Number(ticker.openPrice) > 0 ? (priceDiff / Number(ticker.openPrice)) * 100 : 0;
@@ -87,8 +102,8 @@ export const KeyLevels: React.FC<KeyLevelsProps> = ({
             Open Interest
           </small>
           <strong className="text-2xl font-bold font-mono text-slate-100 mt-1.5 block tracking-tight">
-            {openInterest !== null
-              ? openInterest.toLocaleString('en-US', { maximumFractionDigits: 2 })
+            {numericOi !== null
+              ? numericOi.toLocaleString('en-US', { maximumFractionDigits: 2 })
               : '---'}
           </strong>
           <div className="text-[10px] text-slate-500 uppercase tracking-wider font-mono mt-2.5">

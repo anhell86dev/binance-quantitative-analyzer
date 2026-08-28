@@ -461,6 +461,26 @@ export async function fetchTickerWithFallback(symbol: string) {
 }
 
 // Resilient Open Interest fetcher
+export function extractOpenInterestValue(oi: any): number {
+  if (oi === null || oi === undefined) return 0;
+  if (typeof oi === 'number') return Number.isFinite(oi) ? oi : 0;
+  if (typeof oi === 'string') {
+    const num = parseFloat(oi);
+    return Number.isFinite(num) ? num : 0;
+  }
+  if (typeof oi === 'object') {
+    if (oi.value !== undefined && oi.value !== null) {
+      const num = typeof oi.value === 'number' ? oi.value : parseFloat(String(oi.value));
+      if (Number.isFinite(num)) return num;
+    }
+    if (oi.openInterest !== undefined && oi.openInterest !== null) {
+      const num = typeof oi.openInterest === 'number' ? oi.openInterest : parseFloat(String(oi.openInterest));
+      if (Number.isFinite(num)) return num;
+    }
+  }
+  return 0;
+}
+
 export async function fetchOpenInterestWithFallback(symbol: string) {
   const endpoints = [
     `${BINANCE_FUTURES_BASE}/fapi/v1/openInterest?symbol=${symbol}`,
@@ -472,9 +492,10 @@ export async function fetchOpenInterestWithFallback(symbol: string) {
       if (resp.ok) {
         const data = await resp.json();
         if (data && (data.openInterest || data.openInterest !== undefined)) {
+          const numericVal = parseFloat(data.openInterest) || 0;
           return {
             openInterest: data.openInterest,
-            value: parseFloat(data.openInterest) || 0,
+            value: numericVal,
             symbol: data.symbol || symbol,
             time: Number(data.time) || Date.now(),
           };
