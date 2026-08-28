@@ -282,14 +282,22 @@ export const BinanceWalletTab: React.FC<BinanceWalletTabProps> = ({
                       <td className="py-3 px-3.5 text-slate-300">{fmt(p.entryPrice)}</td>
                       <td className="py-3 px-3.5 text-slate-100">{fmt(p.markPrice)}</td>
                       <td className="py-3 px-3.5 text-amber-400">{liq > 0 ? fmt(liq) : '---'}</td>
-                      <td className="py-3 px-3.5 text-slate-300">{fmt(p.initialMargin)}</td>
+                      <td className="py-3 px-3.5 text-slate-300">${fmt(p.initialMargin)}</td>
                       <td
                         className={`py-3 px-3.5 font-bold ${
                           pnl >= 0 ? 'text-emerald-400' : 'text-red-400'
                         }`}
                       >
-                        {pnl > 0 ? '+' : ''}
-                        {fmt(pnl)} USDT
+                        <div>
+                          {pnl > 0 ? '+' : ''}
+                          {fmt(pnl)} USDT
+                        </div>
+                        {parseFloat(p.initialMargin) > 0 && (
+                          <div className="text-[10px] opacity-80">
+                            ({pnl >= 0 ? '+' : ''}
+                            {((pnl / parseFloat(p.initialMargin)) * 100).toFixed(2)}% ROE)
+                          </div>
+                        )}
                       </td>
                     </tr>
                   );

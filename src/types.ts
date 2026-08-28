@@ -30,6 +30,7 @@ export interface IndicatorRow {
 }
 
 export interface PivotLevels {
+  pp?: number | null;
   r1: number | null;
   r2: number | null;
   r3: number | null;

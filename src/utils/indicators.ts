@@ -155,7 +155,7 @@ export function calculatePivotLevels(candles: Candle[], currentPrice: number): P
   const s2 = lowsBelow[1] ?? (classicS2 < s1 ? classicS2 : s1 * 0.98);
   const s3 = lowsBelow[2] ?? (classicS3 < s2 ? classicS3 : s2 * 0.975);
 
-  return { r1, r2, r3, s1, s2, s3 };
+  return { pp: Number.isFinite(pp) ? pp : null, r1, r2, r3, s1, s2, s3 };
 }
 
 export function calculateMarketStructure(candles: Candle[], lookback: number = 3): MarketStructurePoint[] {

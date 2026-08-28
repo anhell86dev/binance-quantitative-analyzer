@@ -723,6 +723,110 @@ app.post('/api/binance/trade', async (req: Request, res: Response) => {
   }
 });
 
+// Close Position at Market (Emergency Panic / Partial Close)
+app.post('/api/binance/close-market', async (req: Request, res: Response) => {
+  try {
+    const credentials = getApiCredentials(req);
+    if (!credentials.apiKey || !credentials.apiSecret) {
+      return res.status(400).json({
+        success: false,
+        message: 'No se encontraron las credenciales de API de Binance.',
+      });
+    }
+
+    const { symbol, side, quantity, reduceOnly = true } = req.body;
+    const s = String(symbol || '').trim().toUpperCase();
+    const orderSide = String(side || '').trim().toUpperCase();
+    const qty = Number(quantity);
+
+    if (!s || !['BUY', 'SELL'].includes(orderSide) || !Number.isFinite(qty) || qty <= 0) {
+      return res.status(400).json({ success: false, message: 'Parámetros inválidos para cierre de posición.' });
+    }
+
+    const info = await getExchangeInfo();
+    const symInfo = info.symbols.find((item: any) => item.symbol === s);
+    const stepSize = symInfo?.lotSizeFilter?.stepSize || '0.001';
+    const formattedQty = formatToStep(qty, stepSize);
+
+    const closeOrder = await signedFuturesRequest('POST', '/fapi/v1/order', {
+      symbol: s,
+      side: orderSide,
+      type: 'MARKET',
+      quantity: formattedQty,
+      reduceOnly: reduceOnly ? 'true' : 'false',
+    }, credentials);
+
+    res.json({
+      success: true,
+      message: `Posición ${s} cerrada exitosamente a mercado (${formattedQty} unidades).`,
+      order: closeOrder,
+    });
+  } catch (error: any) {
+    console.error('Close Market Error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Error cerrando posición' });
+  }
+});
+
+// Cancel All Open Orders
+app.post('/api/binance/cancel-all', async (req: Request, res: Response) => {
+  try {
+    const credentials = getApiCredentials(req);
+    if (!credentials.apiKey || !credentials.apiSecret) {
+      return res.status(400).json({
+        success: false,
+        message: 'No se encontraron las credenciales de API de Binance.',
+      });
+    }
+
+    const s = String(req.body.symbol || '').trim().toUpperCase();
+    if (!s) {
+      return res.status(400).json({ success: false, message: 'Símbolo requerido.' });
+    }
+
+    const cancelResult = await signedFuturesRequest('DELETE', '/fapi/v1/allOpenOrders', {
+      symbol: s,
+    }, credentials);
+
+    res.json({
+      success: true,
+      message: `Todas las órdenes abiertas en ${s} fueron canceladas exitosamente.`,
+      result: cancelResult,
+    });
+  } catch (error: any) {
+    console.error('Cancel All Error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Error cancelando órdenes' });
+  }
+});
+
+// Set Leverage
+app.post('/api/binance/leverage', async (req: Request, res: Response) => {
+  try {
+    const credentials = getApiCredentials(req);
+    if (!credentials.apiKey || !credentials.apiSecret) {
+      return res.status(400).json({
+        success: false,
+        message: 'No se encontraron las credenciales de API de Binance.',
+      });
+    }
+
+    const s = String(req.body.symbol || '').trim().toUpperCase();
+    const lev = Number(req.body.leverage) || 10;
+
+    const result = await signedFuturesRequest('POST', '/fapi/v1/leverage', {
+      symbol: s,
+      leverage: lev,
+    }, credentials);
+
+    res.json({
+      success: true,
+      message: `Apalancamiento de ${s} ajustado a ${lev}x.`,
+      result,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message || 'Error actualizando apalancamiento' });
+  }
+});
+
 // TradFi & Macro Cross-Asset Overview
 app.get('/api/tradfi/overview', async (req: Request, res: Response) => {
   try {

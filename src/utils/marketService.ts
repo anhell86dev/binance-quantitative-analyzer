@@ -866,14 +866,20 @@ export async function cancelAllOpenOrdersClient(
 ): Promise<{ success: boolean; message: string }> {
   // If backend server is available, call it first
   try {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (apiKey && apiSecret) {
+      headers['x-binance-api-key'] = apiKey;
+      headers['x-binance-api-secret'] = apiSecret;
+    }
+
     const res = await fetch('/api/binance/cancel-all', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ symbol }),
     });
     if (res.ok) {
       const d = await res.json();
-      return { success: true, message: d.msg || 'Todas las órdenes abiertas han sido canceladas.' };
+      return { success: true, message: d.message || d.msg || 'Todas las órdenes abiertas han sido canceladas.' };
     }
   } catch (e) {
     // fallback to client direct
@@ -924,14 +930,20 @@ export async function closePositionAtMarketClient(
 
   // Try server proxy first
   try {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (apiKey && apiSecret) {
+      headers['x-binance-api-key'] = apiKey;
+      headers['x-binance-api-secret'] = apiSecret;
+    }
+
     const res = await fetch('/api/binance/close-market', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ symbol, side, quantity: closeQty }),
     });
     if (res.ok) {
       const d = await res.json();
-      return { success: true, message: d.msg || `Posición ${symbol} cerrada (${percentage}%).` };
+      return { success: true, message: d.message || d.msg || `Posición ${symbol} cerrada (${percentage}%).` };
     }
   } catch (e) {
     // fallback to browser signing

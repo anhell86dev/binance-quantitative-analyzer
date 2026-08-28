@@ -854,18 +854,23 @@ export default function App() {
               }}
               onTradeExecuted={() => syncBinanceWallet()}
               onLogMessage={addLog}
+              onOpenOrderModal={strat => {
+                setSelectedTradeForModal(strat || strategies[0] || null);
+              }}
             />
 
             {/* Timeframe Indicator Matrix */}
             <IndicatorMatrix rows={matrixRows} />
 
-            {/* Interactive Multi-TF Candlestick Chart with TP/SL overlays */}
+            {/* Interactive Multi-TF Candlestick Chart with TP/SL & S/R overlays */}
             <ChartSection
               candles={candles['4h'] || []}
               candlesMap={candles}
               symbol={activeSymbol}
               activeStrategy={strategies[0] || null}
               currentPrice={currentPrice || undefined}
+              sr1d={sr1d}
+              sr4h={sr4h}
               onOpenCyclesModal={() => setIsCyclesModalOpen(true)}
             />
           </div>
