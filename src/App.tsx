@@ -17,7 +17,7 @@ import {
   calculatePivotLevels,
   generateTradingStrategies,
 } from './utils/indicators';
-import { fetchMarketData, validateSymbol } from './utils/marketService';
+import { fetchMarketData, validateSymbol, fetchBinanceDashboard, executeBinanceTrade } from './utils/marketService';
 import { KeyLevels } from './components/KeyLevels';
 import { IndicatorMatrix } from './components/IndicatorMatrix';
 import { ActionPlan } from './components/ActionPlan';
@@ -338,16 +338,10 @@ export default function App() {
     addLog('Sincronizando balances y posiciones con Binance...', 'info');
 
     try {
-      const headers: Record<string, string> = {};
-      if (customApiKey && customApiSecret) {
-        headers['x-binance-api-key'] = customApiKey;
-        headers['x-binance-api-secret'] = customApiSecret;
-      }
+      const creds = customApiKey && customApiSecret ? { apiKey: customApiKey, apiSecret: customApiSecret } : undefined;
+      const data = await fetchBinanceDashboard(activeSymbol, creds);
 
-      const res = await fetch(`/api/binance/dashboard?symbol=${activeSymbol}`, { headers });
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data.error || 'Error conectando con Binance');
+      if (!data) throw new Error('No se recibieron datos de la billetera');
 
       setBinanceData(data);
       if (data.configured) {
@@ -366,28 +360,24 @@ export default function App() {
   const handleExecuteLiveTrade = async (params: any) => {
     addLog(`Enviando orden LIVE ${params.side} para ${params.symbol}...`, 'info');
 
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (customApiKey && customApiSecret) {
-      headers['x-binance-api-key'] = customApiKey;
-      headers['x-binance-api-secret'] = customApiSecret;
+    try {
+      const creds = customApiKey && customApiSecret ? { apiKey: customApiKey, apiSecret: customApiSecret } : undefined;
+      const data = await executeBinanceTrade(params, creds);
+
+      if (!data || !data.ok) {
+        const msg = data?.message || 'Error desconocido al enviar la orden';
+        addLog(`❌ Orden rechazada: ${msg}`, 'error');
+        return { ok: false, message: msg };
+      }
+
+      addLog(`🚀 ÉXITO LIVE: ${data.message}`, 'success');
+      // Refresh wallet
+      syncBinanceWallet();
+      return { ok: true, message: data.message, status: data.status };
+    } catch (err: any) {
+      addLog(`❌ Orden rechazada: ${err.message}`, 'error');
+      return { ok: false, message: err.message };
     }
-
-    const res = await fetch('/api/binance/trade', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(params),
-    });
-
-    const data = await res.json();
-    if (!res.ok || !data.ok) {
-      addLog(`❌ Orden rechazada: ${data.message}`, 'error');
-      return { ok: false, message: data.message };
-    }
-
-    addLog(`🚀 ÉXITO LIVE: ${data.message}`, 'success');
-    // Refresh wallet
-    syncBinanceWallet();
-    return { ok: true, message: data.message, status: data.status };
   };
 
   // Run initial analyze on mount
