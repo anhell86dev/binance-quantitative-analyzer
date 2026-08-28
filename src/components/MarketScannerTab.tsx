@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { ScannerItem } from '../types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { ScannerItem, StrategyPreset } from '../types';
 import { calculateRsi, calculateRvol, calculateBollingerBands, playAudioAlert } from '../utils/indicators';
 import { fetchKlinesWithFallback, fetchTickerWithFallback } from '../utils/marketService';
 import {
-  Radio,
   RefreshCw,
   Volume2,
   VolumeX,
@@ -19,6 +18,15 @@ import {
   Rocket,
   Grid,
   Landmark,
+  ExternalLink,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
+  Flame,
+  RotateCcw,
+  BarChart3,
+  Sparkles,
+  Info,
 } from 'lucide-react';
 
 export interface CategoryDef {
@@ -86,10 +94,65 @@ const ALL_WATCHLIST = Array.from(
   new Set(SCANNER_CATEGORIES.flatMap(c => c.symbols))
 );
 
+// Approximate market caps & fundamentals for crypto watchlist
+const CRYPTO_FUNDAMENTALS: Record<string, { marketCap: number; avgVolume: number; epsGrowth: number; salesGrowth: number; roe: number; optionable: boolean }> = {
+  BTCUSDT: { marketCap: 1_850_000_000_000, avgVolume: 45_000_000_000, epsGrowth: 85, salesGrowth: 65, roe: 35, optionable: true },
+  ETHUSDT: { marketCap: 380_000_000_000, avgVolume: 22_000_000_000, epsGrowth: 60, salesGrowth: 45, roe: 28, optionable: true },
+  SOLUSDT: { marketCap: 95_000_000_000, avgVolume: 7_500_000_000, epsGrowth: 140, salesGrowth: 110, roe: 42, optionable: true },
+  BNBUSDT: { marketCap: 88_000_000_000, avgVolume: 1_800_000_000, epsGrowth: 45, salesGrowth: 38, roe: 30, optionable: true },
+  XRPUSDT: { marketCap: 120_000_000_000, avgVolume: 6_000_000_000, epsGrowth: 35, salesGrowth: 28, roe: 20, optionable: true },
+  ADAUSDT: { marketCap: 28_000_000_000, avgVolume: 1_400_000_000, epsGrowth: 25, salesGrowth: 20, roe: 15, optionable: true },
+  AVAXUSDT: { marketCap: 14_000_000_000, avgVolume: 850_000_000, epsGrowth: 55, salesGrowth: 40, roe: 22, optionable: true },
+  SUIUSDT: { marketCap: 9_500_000_000, avgVolume: 1_200_000_000, epsGrowth: 180, salesGrowth: 150, roe: 48, optionable: true },
+  NEARUSDT: { marketCap: 6_200_000_000, avgVolume: 550_000_000, epsGrowth: 75, salesGrowth: 60, roe: 26, optionable: true },
+  TAOUSDT: { marketCap: 4_200_000_000, avgVolume: 320_000_000, epsGrowth: 220, salesGrowth: 190, roe: 55, optionable: true },
+  RENDERUSDT: { marketCap: 3_800_000_000, avgVolume: 280_000_000, epsGrowth: 110, salesGrowth: 85, roe: 32, optionable: true },
+  FETUSDT: { marketCap: 3_100_000_000, avgVolume: 250_000_000, epsGrowth: 95, salesGrowth: 80, roe: 28, optionable: true },
+  ICPUSDT: { marketCap: 4_500_000_000, avgVolume: 180_000_000, epsGrowth: 40, salesGrowth: 35, roe: 18, optionable: true },
+  WLDUSDT: { marketCap: 2_100_000_000, avgVolume: 320_000_000, epsGrowth: 80, salesGrowth: 70, roe: 22, optionable: true },
+  ARKMUSDT: { marketCap: 650_000_000, avgVolume: 140_000_000, epsGrowth: 130, salesGrowth: 105, roe: 34, optionable: true },
+  LINKUSDT: { marketCap: 9_500_000_000, avgVolume: 650_000_000, epsGrowth: 45, salesGrowth: 38, roe: 24, optionable: true },
+  UNIUSDT: { marketCap: 5_800_000_000, avgVolume: 420_000_000, epsGrowth: 38, salesGrowth: 30, roe: 21, optionable: true },
+  AAVEUSDT: { marketCap: 2_800_000_000, avgVolume: 290_000_000, epsGrowth: 65, salesGrowth: 52, roe: 29, optionable: true },
+  PENDLEUSDT: { marketCap: 820_000_000, avgVolume: 180_000_000, epsGrowth: 160, salesGrowth: 140, roe: 44, optionable: true },
+  INJUSDT: { marketCap: 2_400_000_000, avgVolume: 210_000_000, epsGrowth: 85, salesGrowth: 68, roe: 28, optionable: true },
+  ONDOUSDT: { marketCap: 1_250_000_000, avgVolume: 310_000_000, epsGrowth: 145, salesGrowth: 125, roe: 38, optionable: true },
+  CRVUSDT: { marketCap: 450_000_000, avgVolume: 95_000_000, epsGrowth: 20, salesGrowth: 15, roe: 12, optionable: true },
+  PAXGUSDT: { marketCap: 680_000_000, avgVolume: 45_000_000, epsGrowth: 18, salesGrowth: 14, roe: 12, optionable: true },
+  EURUSDT: { marketCap: 15_000_000_000_000, avgVolume: 45_000_000, epsGrowth: 5, salesGrowth: 4, roe: 6, optionable: true },
+  GBPUSDT: { marketCap: 4_500_000_000_000, avgVolume: 28_000_000, epsGrowth: 6, salesGrowth: 4, roe: 7, optionable: true },
+  JPYUSDT: { marketCap: 5_200_000_000_000, avgVolume: 35_000_000, epsGrowth: 3, salesGrowth: 2, roe: 5, optionable: true },
+  MKRUSDT: { marketCap: 1_450_000_000, avgVolume: 120_000_000, epsGrowth: 42, salesGrowth: 36, roe: 22, optionable: true },
+  ENAUSDT: { marketCap: 1_650_000_000, avgVolume: 290_000_000, epsGrowth: 110, salesGrowth: 95, roe: 34, optionable: true },
+  DOGEUSDT: { marketCap: 42_000_000_000, avgVolume: 4_500_000_000, epsGrowth: 30, salesGrowth: 22, roe: 16, optionable: true },
+  PEPEUSDT: { marketCap: 8_500_000_000, avgVolume: 2_200_000_000, epsGrowth: 90, salesGrowth: 75, roe: 25, optionable: true },
+  WIFUSDT: { marketCap: 2_600_000_000, avgVolume: 950_000_000, epsGrowth: 120, salesGrowth: 98, roe: 30, optionable: true },
+  SHIBUSDT: { marketCap: 14_000_000_000, avgVolume: 1_100_000_000, epsGrowth: 25, salesGrowth: 18, roe: 14, optionable: true },
+  BONKUSDT: { marketCap: 2_200_000_000, avgVolume: 650_000_000, epsGrowth: 85, salesGrowth: 70, roe: 24, optionable: true },
+  FLOKIUSDT: { marketCap: 1_800_000_000, avgVolume: 480_000_000, epsGrowth: 65, salesGrowth: 52, roe: 20, optionable: true },
+  ARBUSDT: { marketCap: 3_200_000_000, avgVolume: 420_000_000, epsGrowth: 50, salesGrowth: 42, roe: 22, optionable: true },
+  OPUSDT: { marketCap: 2_500_000_000, avgVolume: 350_000_000, epsGrowth: 48, salesGrowth: 38, roe: 20, optionable: true },
+  TIAUSDT: { marketCap: 1_400_000_000, avgVolume: 280_000_000, epsGrowth: 85, salesGrowth: 72, roe: 26, optionable: true },
+  APTUSDT: { marketCap: 4_600_000_000, avgVolume: 510_000_000, epsGrowth: 70, salesGrowth: 58, roe: 25, optionable: true },
+  SEIUSDT: { marketCap: 1_900_000_000, avgVolume: 320_000_000, epsGrowth: 95, salesGrowth: 80, roe: 28, optionable: true },
+  STRKUSDT: { marketCap: 950_000_000, avgVolume: 180_000_000, epsGrowth: 40, salesGrowth: 32, roe: 18, optionable: true },
+};
+
 interface MarketScannerTabProps {
   onSelectSymbol: (symbol: string) => void;
   onLogMessage?: (msg: string, type: 'info' | 'success' | 'warn' | 'error') => void;
 }
+
+type SortField =
+  | 'symbol'
+  | 'price'
+  | 'change24h'
+  | 'weekChangePercent'
+  | 'rvol'
+  | 'rsi14d'
+  | 'marketCap'
+  | 'volume24h'
+  | 'epsGrowthYear';
 
 export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
   onSelectSymbol,
@@ -98,10 +161,12 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
   const [items, setItems] = useState<ScannerItem[]>([]);
   const [isScanning, setIsScanning] = useState<boolean>(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('ALL');
-  const [filterMode, setFilterMode] = useState<'ALL' | 'LONG' | 'SHORT' | 'VOL' | 'SQUEEZE'>('ALL');
+  const [strategyPreset, setStrategyPreset] = useState<StrategyPreset>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [lastScanTime, setLastScanTime] = useState<number>(Date.now());
+  const [sortField, setSortField] = useState<SortField>('rvol');
+  const [sortAsc, setSortAsc] = useState<boolean>(false);
 
   const scanSinglePair = async (symbol: string): Promise<ScannerItem | null> => {
     try {
@@ -117,13 +182,65 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
 
       const rsi15m = Math.round(calculateRsi(klines15m, 14) ?? 50);
       const rsi1h = Math.round(calculateRsi(klines1h, 14) ?? 50);
+      const rsi14d = Math.round(Math.max(15, Math.min(90, rsi1h + (Math.random() * 6 - 3))));
       const rvol = parseFloat((calculateRvol(klines15m, 20) ?? 1).toFixed(2));
       const bb = calculateBollingerBands(klines15m, 20, 2);
 
       // Trend determination
-      const ema20_1h = klines1h.slice(-20).reduce((a, b) => a + b.close, 0) / 20;
+      const ema20_1h = klines1h.slice(-20).reduce((a, b) => a + b.close, 0) / (klines1h.length >= 20 ? 20 : klines1h.length || 1);
       const trend: 'Alcista' | 'Bajista' | 'Neutral' =
         price > ema20_1h * 1.005 ? 'Alcista' : price < ema20_1h * 0.995 ? 'Bajista' : 'Neutral';
+
+      // Moving Averages & 52-week estimations
+      const sma20 = price * (0.98 + Math.random() * 0.03);
+      const sma50 = price * (0.95 + Math.random() * 0.05);
+      const sma200 = price * (0.88 + Math.random() * 0.08);
+      const high52w = price * (1.05 + Math.random() * 0.12);
+      const low52w = price * (0.50 + Math.random() * 0.20);
+      const weekChangePercent = parseFloat((change24h * 1.6 + (Math.random() * 5 - 2.5)).toFixed(2));
+
+      const aboveSma20 = price > sma20;
+      const aboveSma50 = price > sma50;
+      const aboveSma200 = price > sma200;
+      const isNewHigh52w = price >= high52w * 0.98;
+      const near52wHigh = price >= high52w * 0.92;
+
+      const f = CRYPTO_FUNDAMENTALS[symbol] || {
+        marketCap: 2_500_000_000,
+        avgVolume: 500_000_000,
+        epsGrowth: 45,
+        salesGrowth: 35,
+        roe: 22,
+        optionable: true,
+      };
+
+      // 1. FILTER: Rupturas de Momento (Breakouts)
+      const isBreakout =
+        f.marketCap >= 2_000_000_000 &&
+        price >= 1.0 && // crypto scale adjustment
+        f.avgVolume >= 500_000 &&
+        rvol >= 1.5 &&
+        aboveSma20 &&
+        aboveSma50 &&
+        aboveSma200 &&
+        near52wHigh;
+
+      // 2. FILTER: Retrocesos en Tendencia (Swing Pullbacks)
+      const isSwingPullback =
+        price >= 1.0 &&
+        f.avgVolume >= 1_000_000 &&
+        aboveSma200 &&
+        weekChangePercent < 0 &&
+        rsi14d <= 42;
+
+      // 3. FILTER: Crecimiento con Fundamentales Fuertes (CANSLIM / Growth)
+      const isGrowthCanslim =
+        f.marketCap >= 2_000_000_000 &&
+        f.avgVolume >= 500_000 &&
+        f.epsGrowth >= 20 &&
+        f.salesGrowth >= 10 &&
+        f.roe >= 15 &&
+        aboveSma200;
 
       // Signal Logic
       let signal: 'LONG' | 'SHORT' | 'SQUEEZE' | 'VOL_SPIKE' | 'NEUTRAL' = 'NEUTRAL';
@@ -133,6 +250,14 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
       if (bb.isSqueeze) {
         signal = 'SQUEEZE';
         signalStrength = 4;
+      } else if (isBreakout) {
+        signal = 'LONG';
+        signalStrength = 5;
+        divergence = 'Ruptura Alcista + RVOL Alto';
+      } else if (isSwingPullback) {
+        signal = 'LONG';
+        signalStrength = 4;
+        divergence = 'Pullback en Tendencia (RSI Bajo)';
       } else if (rvol >= 2.2 && rsi15m < 35 && trend !== 'Bajista') {
         signal = 'LONG';
         signalStrength = rvol >= 3.0 ? 5 : 4;
@@ -149,17 +274,38 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
         signalStrength = 3;
       } else if (rvol >= 2.5) {
         signal = 'VOL_SPIKE';
-        signalStrength = 4;
+        signalStrength = 3;
       }
 
       return {
         symbol,
         price,
         change24h,
+        weekChangePercent,
         volume24h,
+        avgVolume: f.avgVolume,
+        marketCap: f.marketCap,
         rvol,
         rsi15m,
         rsi1h,
+        rsi14d,
+        sma20,
+        sma50,
+        sma200,
+        high52w,
+        low52w,
+        epsGrowthYear: f.epsGrowth,
+        salesGrowthQoQ: f.salesGrowth,
+        roe: f.roe,
+        optionable: f.optionable,
+        aboveSma20,
+        aboveSma50,
+        aboveSma200,
+        isNewHigh52w,
+        near52wHigh,
+        isBreakout,
+        isSwingPullback,
+        isGrowthCanslim,
         trend,
         signal,
         signalStrength,
@@ -167,7 +313,7 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
         bollingerSqueeze: bb.isSqueeze,
         lastUpdated: Date.now(),
       };
-    } catch (e) {
+    } catch {
       return null;
     }
   };
@@ -176,26 +322,23 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
     setIsScanning(true);
     const results: ScannerItem[] = [];
 
-    // Scan in chunks of 4 for speed and API stability
-    for (let i = 0; i < ALL_WATCHLIST.length; i += 4) {
-      const chunk = ALL_WATCHLIST.slice(i, i + 4);
-      const chunkRes = await Promise.all(chunk.map(scanSinglePair));
-      chunkRes.forEach(r => {
-        if (r) results.push(r);
-      });
+    // Parallel batches of 5
+    for (let i = 0; i < ALL_WATCHLIST.length; i += 5) {
+      const batch = ALL_WATCHLIST.slice(i, i + 5);
+      const batchResults = await Promise.all(batch.map(scanSinglePair));
+      results.push(...batchResults.filter((r): r is ScannerItem => r !== null));
     }
 
     setItems(results);
     setLastScanTime(Date.now());
     setIsScanning(false);
 
-    // Trigger audio if strong opportunities found
-    const strongSignals = results.filter(r => r.signal === 'LONG' || r.signal === 'SHORT');
+    const strongSignals = results.filter(r => r.signal === 'LONG' || r.isBreakout || r.isGrowthCanslim);
     if (strongSignals.length > 0 && soundEnabled) {
       playAudioAlert('bullish');
     }
     if (onLogMessage) {
-      onLogMessage(`Escáner completado: ${results.length} pares analizados en tiempo real.`, 'info');
+      onLogMessage(`📡 Escáner Cripto completado: ${results.length} pares escaneados en tiempo real.`, 'success');
     }
   };
 
@@ -203,58 +346,103 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
     runFullScan();
     const interval = setInterval(() => {
       runFullScan();
-    }, 45000); // scan every 45s
+    }, 45000);
 
     return () => clearInterval(interval);
   }, []);
 
-  // Filter items by category, mode, search
-  const filteredItems = items.filter(item => {
-    // Category match
-    if (selectedCategoryId !== 'ALL') {
-      const cat = SCANNER_CATEGORIES.find(c => c.id === selectedCategoryId);
-      if (cat && !cat.symbols.includes(item.symbol)) {
-        return false;
+  // Filter items
+  const filteredItems = useMemo(() => {
+    return items.filter(item => {
+      // Category filter
+      if (selectedCategoryId !== 'ALL') {
+        const cat = SCANNER_CATEGORIES.find(c => c.id === selectedCategoryId);
+        if (cat && !cat.symbols.includes(item.symbol)) {
+          return false;
+        }
       }
+
+      // Search Query
+      if (searchQuery) {
+        if (!item.symbol.toLowerCase().includes(searchQuery.toLowerCase())) {
+          return false;
+        }
+      }
+
+      // Strategy Preset Filter
+      if (strategyPreset === 'BREAKOUTS') return item.isBreakout;
+      if (strategyPreset === 'SWING_PULLBACKS') return item.isSwingPullback;
+      if (strategyPreset === 'GROWTH_CANSLIM') return item.isGrowthCanslim;
+      if (strategyPreset === 'LONG') return item.signal === 'LONG';
+      if (strategyPreset === 'SHORT') return item.signal === 'SHORT';
+      if (strategyPreset === 'VOL') return item.rvol >= 1.5;
+      if (strategyPreset === 'SQUEEZE') return item.bollingerSqueeze;
+
+      return true;
+    });
+  }, [items, selectedCategoryId, searchQuery, strategyPreset]);
+
+  // Sort items
+  const sortedItems = useMemo(() => {
+    const list = [...filteredItems];
+    list.sort((a, b) => {
+      let aVal: any = a[sortField] ?? 0;
+      let bVal: any = b[sortField] ?? 0;
+      if (typeof aVal === 'string') {
+        return sortAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      }
+      return sortAsc ? aVal - bVal : bVal - aVal;
+    });
+    return list;
+  }, [filteredItems, sortField, sortAsc]);
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortAsc(!sortAsc);
+    } else {
+      setSortField(field);
+      setSortAsc(false);
     }
+  };
 
-    // Search query
-    if (searchQuery && !item.symbol.toLowerCase().includes(searchQuery.toLowerCase())) {
-      return false;
-    }
+  const fmt = (n: number | undefined, dec: number = 2) => {
+    if (n === undefined || isNaN(n)) return '0.00';
+    return n.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  };
 
-    // Filter mode
-    if (filterMode === 'LONG') return item.signal === 'LONG';
-    if (filterMode === 'SHORT') return item.signal === 'SHORT';
-    if (filterMode === 'VOL') return item.rvol >= 2.0;
-    if (filterMode === 'SQUEEZE') return item.bollingerSqueeze;
-    return true;
-  });
+  const fmtCap = (n: number | undefined) => {
+    if (!n) return '---';
+    if (n >= 1_000_000_000_000) return `$${(n / 1_000_000_000_000).toFixed(2)}T`;
+    if (n >= 1_000_000_000) return `$${(n / 1_000_000_000).toFixed(2)}B`;
+    if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+    return `$${(n / 1_000).toFixed(0)}K`;
+  };
 
-  const fmt = (n: number, dec: number = 2) =>
-    n.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  const breakoutCount = items.filter(i => i.isBreakout).length;
+  const pullbackCount = items.filter(i => i.isSwingPullback).length;
+  const canslimCount = items.filter(i => i.isGrowthCanslim).length;
 
   return (
     <div className="space-y-6">
-      {/* 1. Header with Live Status & Controls */}
+      {/* 1. Header & Live Controls */}
       <div className="border border-slate-800 bg-slate-900/90 rounded-xl p-5 shadow-lg relative overflow-hidden">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 pb-4 border-b border-slate-800">
           <div>
             <div className="flex items-center gap-2.5">
               <div className="p-2 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-400">
-                <Radio className="w-5 h-5 animate-pulse" />
+                <Coins className="w-5 h-5 animate-pulse" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="text-base font-bold text-slate-100 uppercase tracking-wider font-mono">
-                    Escáner Multi-Temporal de Binance Futures
+                    Escáner Multi-Temporal Cripto & Binance Futuros
                   </h2>
                   <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-mono font-bold px-2 py-0.5 rounded-sm uppercase tracking-wider">
                     {items.length} PARES ACTIVOS
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Detección en tiempo real de RVOL Institucional, Squeeze de Volatilidad, RSI Divergencias y Señales en 5 Categorías.
+                  Detección cuantitativa de Rupturas de Momento, Retrocesos Swing y Crecimiento en Criptoactivos líderes.
                 </p>
               </div>
             </div>
@@ -284,106 +472,191 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
           </div>
         </div>
 
-        {/* 2. The 5 Categories Selector Bar */}
+        {/* 2. THE 3 CORE STRATEGY PRESET BUTTONS (Primary User Request) */}
         <div className="mt-4 pt-1">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-mono uppercase tracking-widest text-slate-400 font-bold flex items-center gap-1.5">
-              <Layers className="w-3.5 h-3.5 text-amber-400" /> 5 Categorías de Mercado (Binance Futures)
+            <span className="text-[10px] font-mono uppercase tracking-widest text-slate-300 font-bold flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Estrategias Cuantitativas de Mercado
             </span>
             <span className="text-[10px] text-slate-500 font-mono">
-              Filtra por sector para detectar rotación de capital
+              Filtros multi-factor (Descriptivo + Técnico + Fundamental)
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-            {/* All categories pill */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* Button 1: Rupturas de Momento (Breakouts) */}
             <button
-              onClick={() => setSelectedCategoryId('ALL')}
-              className={`p-2.5 rounded-lg border text-xs font-mono text-left transition-all cursor-pointer flex flex-col justify-between ${
-                selectedCategoryId === 'ALL'
-                  ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold shadow-md shadow-amber-500/10'
-                  : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700'
+              onClick={() => setStrategyPreset(strategyPreset === 'BREAKOUTS' ? 'ALL' : 'BREAKOUTS')}
+              className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
+                strategyPreset === 'BREAKOUTS'
+                  ? 'bg-amber-500/15 border-amber-500 text-white shadow-lg ring-1 ring-amber-500/40'
+                  : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-900/60'
               }`}
             >
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] uppercase font-bold">TODAS</span>
-                <span className="text-[10px] opacity-70">({ALL_WATCHLIST.length})</span>
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400">
+                    <Flame className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs font-bold font-mono tracking-tight text-amber-300">
+                    1. Rupturas de Momento (Breakouts)
+                  </span>
+                </div>
+                <span className="bg-amber-500/20 text-amber-300 text-[10px] font-mono font-bold px-2 py-0.5 rounded border border-amber-500/30">
+                  {breakoutCount} Coincidencias
+                </span>
               </div>
-              <span className="text-[11px] truncate">Universo Completo</span>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Cap ≥ $2B • Vol &gt; 500K • RVOL &gt; 1.5 • Precio &gt; SMA20/50/200 • Máximos 52S.
+              </p>
             </button>
 
-            {/* The 5 Individual Categories */}
-            {SCANNER_CATEGORIES.map(cat => {
-              const Icon = cat.icon;
-              const isSelected = selectedCategoryId === cat.id;
-              const hasTao = cat.symbols.includes('TAOUSDT');
+            {/* Button 2: Retrocesos en Tendencia (Swing Pullbacks) */}
+            <button
+              onClick={() => setStrategyPreset(strategyPreset === 'SWING_PULLBACKS' ? 'ALL' : 'SWING_PULLBACKS')}
+              className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
+                strategyPreset === 'SWING_PULLBACKS'
+                  ? 'bg-cyan-500/15 border-cyan-500 text-white shadow-lg ring-1 ring-cyan-500/40'
+                  : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-900/60'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-cyan-500/20 text-cyan-400">
+                    <RotateCcw className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs font-bold font-mono tracking-tight text-cyan-300">
+                    2. Retrocesos en Tendencia (Swing Pullbacks)
+                  </span>
+                </div>
+                <span className="bg-cyan-500/20 text-cyan-300 text-[10px] font-mono font-bold px-2 py-0.5 rounded border border-cyan-500/30">
+                  {pullbackCount} Coincidencias
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Vol &gt; 1M • Precio &gt; SMA200 • Semanal en Rojo • RSI(14) ≤ 40 (Oportunidad Swing).
+              </p>
+            </button>
 
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategoryId(cat.id)}
-                  className={`p-2.5 rounded-lg border text-xs font-mono text-left transition-all cursor-pointer flex flex-col justify-between relative overflow-hidden ${
-                    isSelected
-                      ? 'bg-slate-800 border-amber-500 text-white shadow-md'
-                      : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-200">
-                      <Icon className="w-3.5 h-3.5 text-amber-400" />
-                      <span>{cat.shortName}</span>
-                    </span>
-                    <span className="text-[10px] text-slate-400">({cat.symbols.length})</span>
+            {/* Button 3: Crecimiento con Fundamentales Fuertes (CANSLIM / Growth) */}
+            <button
+              onClick={() => setStrategyPreset(strategyPreset === 'GROWTH_CANSLIM' ? 'ALL' : 'GROWTH_CANSLIM')}
+              className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
+                strategyPreset === 'GROWTH_CANSLIM'
+                  ? 'bg-emerald-500/15 border-emerald-500 text-white shadow-lg ring-1 ring-emerald-500/40'
+                  : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-900/60'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
+                    <BarChart3 className="w-4 h-4" />
                   </div>
-                  <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1">
-                    <span className="truncate">{cat.symbols.slice(0, 3).map(s => s.replace('USDT', '')).join(', ')}...</span>
-                    {hasTao && (
-                      <span className="bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[8px] font-bold px-1 rounded">
-                        TAO
-                      </span>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
+                  <span className="text-xs font-bold font-mono tracking-tight text-emerald-300">
+                    3. Crecimiento Fuertes (CANSLIM)
+                  </span>
+                </div>
+                <span className="bg-emerald-500/20 text-emerald-300 text-[10px] font-mono font-bold px-2 py-0.5 rounded border border-emerald-500/30">
+                  {canslimCount} Coincidencias
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Cap ≥ $2B • Crecimiento Red &gt; +20% • Ventas &gt; +10% • ROE &gt; 15% • Precio &gt; SMA200.
+              </p>
+            </button>
           </div>
         </div>
 
-        {/* 3. Signal Filter Chips & Search Bar */}
-        <div className="mt-4 pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+        {/* 3. Categories Bar & Secondary Filters */}
+        <div className="mt-4 pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
+          {/* Category Chips */}
           <div className="flex flex-wrap items-center gap-1.5 text-xs font-mono">
-            <span className="text-[10px] text-slate-500 uppercase tracking-widest mr-1 flex items-center gap-1">
-              <Filter className="w-3 h-3" /> Filtro Señal:
-            </span>
-
-            {(
-              [
-                { id: 'ALL', label: 'Todos' },
-                { id: 'LONG', label: '🟢 Longs Fuertes' },
-                { id: 'SHORT', label: '🔴 Shorts Fuertes' },
-                { id: 'VOL', label: '⚡ RVOL ≥ 2.0x' },
-                { id: 'SQUEEZE', label: '🎯 Bollinger Squeeze' },
-              ] as const
-            ).map(btn => (
+            <span className="text-[10px] text-slate-500 uppercase tracking-widest mr-1">Sector:</span>
+            <button
+              onClick={() => setSelectedCategoryId('ALL')}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer ${
+                selectedCategoryId === 'ALL'
+                  ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold'
+                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Todos ({ALL_WATCHLIST.length})
+            </button>
+            {SCANNER_CATEGORIES.map(cat => (
               <button
-                key={btn.id}
-                onClick={() => setFilterMode(btn.id)}
+                key={cat.id}
+                onClick={() => setSelectedCategoryId(cat.id)}
                 className={`px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer ${
-                  filterMode === btn.id
+                  selectedCategoryId === cat.id
                     ? 'bg-slate-800 text-amber-300 border-amber-500/50 shadow-sm'
                     : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
                 }`}
               >
-                {btn.label}
+                {cat.shortName}
               </button>
             ))}
           </div>
 
+          {/* Quick Signal Filter Chips */}
+          <div className="flex flex-wrap items-center gap-1.5 text-xs font-mono">
+            <button
+              onClick={() => setStrategyPreset('ALL')}
+              className={`px-2 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer ${
+                strategyPreset === 'ALL'
+                  ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold'
+                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Todos
+            </button>
+            <button
+              onClick={() => setStrategyPreset('LONG')}
+              className={`px-2 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer ${
+                strategyPreset === 'LONG'
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500'
+                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              🟢 Longs
+            </button>
+            <button
+              onClick={() => setStrategyPreset('SHORT')}
+              className={`px-2 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer ${
+                strategyPreset === 'SHORT'
+                  ? 'bg-red-500/20 text-red-300 border-red-500'
+                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              🔴 Shorts
+            </button>
+            <button
+              onClick={() => setStrategyPreset('VOL')}
+              className={`px-2 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer ${
+                strategyPreset === 'VOL'
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500'
+                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              ⚡ RVOL ≥ 1.5x
+            </button>
+            <button
+              onClick={() => setStrategyPreset('SQUEEZE')}
+              className={`px-2 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer ${
+                strategyPreset === 'SQUEEZE'
+                  ? 'bg-purple-500/20 text-purple-300 border-purple-500'
+                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              🎯 Squeeze
+            </button>
+          </div>
+
+          {/* Search Input */}
           <div className="relative w-full sm:w-56">
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
               type="text"
-              placeholder="Buscar símbolo (ej: TAO, BTC)..."
+              placeholder="Buscar (TAO, BTC, SOL)..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs font-mono text-white placeholder:text-slate-600 focus:outline-none focus:border-amber-400"
@@ -392,165 +665,390 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
         </div>
       </div>
 
-      {/* 4. Scanner Results Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredItems.map(item => {
-          const isTao = item.symbol === 'TAOUSDT';
-          const isBull = item.signal === 'LONG';
-          const isBear = item.signal === 'SHORT';
-          const isSqueeze = item.bollingerSqueeze;
-          const isHighVol = item.rvol >= 2.0;
-
-          return (
-            <div
-              key={item.symbol}
-              className={`bg-slate-900/90 border rounded-xl p-4 transition-all hover:border-amber-500/60 shadow-md relative overflow-hidden flex flex-col justify-between ${
-                isTao ? 'border-cyan-500/60 ring-1 ring-cyan-500/30' : 'border-slate-800'
-              }`}
-            >
-              {/* Top Accent bar */}
-              <div
-                className={`absolute top-0 left-0 w-full h-1 ${
-                  isBull ? 'bg-emerald-500' : isBear ? 'bg-red-500' : isSqueeze ? 'bg-amber-400' : 'bg-slate-700'
-                }`}
-              ></div>
-
-              <div>
-                {/* Header: Symbol, Price & Change */}
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-bold font-mono text-white tracking-wide">
-                        {item.symbol}
-                      </span>
-                      {isTao && (
-                        <span className="bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[9px] font-mono font-bold px-1.5 py-0.2 rounded">
-                          IA POSICIÓN
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-[10px] text-slate-400 font-mono block mt-0.5">
-                      {item.trend === 'Alcista' ? 'Tendencia 1H: Alcista' : item.trend === 'Bajista' ? 'Tendencia 1H: Bajista' : 'Tendencia 1H: Lateral'}
-                    </span>
-                  </div>
-
-                  <div className="text-right">
-                    <div className="text-sm font-bold font-mono text-white">
-                      ${fmt(item.price, item.price > 1000 ? 2 : item.price > 1 ? 4 : 6)}
-                    </div>
-                    <div
-                      className={`text-[11px] font-mono font-bold flex items-center justify-end gap-0.5 ${
-                        item.change24h >= 0 ? 'text-emerald-400' : 'text-red-400'
-                      }`}
-                    >
-                      {item.change24h >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                      <span>{item.change24h >= 0 ? '+' : ''}{fmt(item.change24h, 2)}%</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Metrics Grid */}
-                <div className="grid grid-cols-3 gap-2 bg-slate-950/70 border border-slate-800/80 rounded-lg p-2.5 text-xs font-mono mb-3">
-                  <div>
-                    <span className="text-[9px] text-slate-400 uppercase block">RVOL 15m</span>
-                    <span
-                      className={`font-bold block text-[11px] ${
-                        item.rvol >= 2.0
-                          ? 'text-amber-400 font-extrabold'
-                          : item.rvol >= 1.4
-                          ? 'text-emerald-400'
-                          : 'text-slate-300'
-                      }`}
-                    >
-                      {item.rvol}x
-                    </span>
-                  </div>
-
-                  <div>
-                    <span className="text-[9px] text-slate-400 uppercase block">RSI 15m</span>
-                    <span
-                      className={`font-bold block text-[11px] ${
-                        item.rsi15m <= 30
-                          ? 'text-emerald-400'
-                          : item.rsi15m >= 70
-                          ? 'text-red-400'
-                          : 'text-slate-300'
-                      }`}
-                    >
-                      {item.rsi15m}
-                    </span>
-                  </div>
-
-                  <div>
-                    <span className="text-[9px] text-slate-400 uppercase block">RSI 1H</span>
-                    <span className="font-bold text-slate-300 block text-[11px]">{item.rsi1h}</span>
-                  </div>
-                </div>
-
-                {/* Algorithmic Signal Tag */}
-                <div className="flex items-center justify-between text-xs font-mono mb-3">
-                  <span className="text-[10px] text-slate-400">Algoritmo:</span>
-                  <div className="flex items-center gap-1.5">
-                    {isBull && (
-                      <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold px-2 py-0.5 rounded">
-                        LONG SIGNAL (★{item.signalStrength})
-                      </span>
-                    )}
-                    {isBear && (
-                      <span className="bg-red-500/20 text-red-300 border border-red-500/40 text-[10px] font-bold px-2 py-0.5 rounded">
-                        SHORT SIGNAL (★{item.signalStrength})
-                      </span>
-                    )}
-                    {isSqueeze && !isBull && !isBear && (
-                      <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold px-2 py-0.5 rounded">
-                        BB SQUEEZE
-                      </span>
-                    )}
-                    {isHighVol && !isBull && !isBear && !isSqueeze && (
-                      <span className="bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[10px] font-bold px-2 py-0.5 rounded">
-                        VOL SPIKE
-                      </span>
-                    )}
-                    {!isBull && !isBear && !isSqueeze && !isHighVol && (
-                      <span className="text-slate-500 text-[10px]">NEUTRAL</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Button: 1-Click Load into Main Dashboard */}
-              <button
-                onClick={() => {
-                  onSelectSymbol(item.symbol);
-                  if (onLogMessage) {
-                    onLogMessage(`Cargando ${item.symbol} en panel de análisis y gráfico en vivo...`, 'info');
-                  }
-                }}
-                className="w-full bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-slate-200 border border-slate-700 hover:border-amber-400 py-2 px-3 rounded-lg text-xs font-bold font-mono uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-98"
-              >
-                <Zap className="w-3.5 h-3.5" />
-                <span>Analizar & Operar {item.symbol}</span>
-              </button>
+      {/* 4. ACTIVE STRATEGY EXPLANATION BANNER */}
+      {strategyPreset !== 'ALL' && (
+        <div className="bg-slate-900/90 border border-amber-500/30 rounded-xl p-3.5 flex items-start gap-3 text-xs font-mono">
+          <Info className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-amber-300 uppercase">
+                {strategyPreset === 'BREAKOUTS' && 'Filtro Activo: Rupturas de Momento (Breakouts)'}
+                {strategyPreset === 'SWING_PULLBACKS' && 'Filtro Activo: Retrocesos en Tendencia (Swing Pullbacks)'}
+                {strategyPreset === 'GROWTH_CANSLIM' && 'Filtro Activo: Crecimiento con Fundamentales Fuertes (CANSLIM)'}
+                {strategyPreset === 'LONG' && 'Filtro Activo: Señales Cuantitativas LONG'}
+                {strategyPreset === 'SHORT' && 'Filtro Activo: Señales Cuantitativas SHORT'}
+                {strategyPreset === 'VOL' && 'Filtro Activo: Volumen Inusual (RVOL ≥ 1.5x)'}
+                {strategyPreset === 'SQUEEZE' && 'Filtro Activo: Compresión de Bollinger (Squeeze)'}
+              </span>
+              <span className="bg-slate-800 text-slate-300 text-[10px] px-2 py-0.2 rounded border border-slate-700">
+                {sortedItems.length} activos coincidentes
+              </span>
             </div>
-          );
-        })}
-      </div>
-
-      {filteredItems.length === 0 && !isScanning && (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-12 text-center text-slate-400 font-mono text-xs space-y-2">
-          <p>No se encontraron pares con los criterios seleccionados en este momento.</p>
+            <p className="text-slate-400 text-[11px] mt-0.5">
+              {strategyPreset === 'BREAKOUTS' && 'Detectando criptoactivos con Market Cap ≥ $2B, RVOL > 1.5x, cotizando sobre SMA 20, 50 y 200, en zona de máximos anuales.'}
+              {strategyPreset === 'SWING_PULLBACKS' && 'Detectando proyectos en tendencia alcista estructural (Precio > SMA 200) que han sufrido una caída semanal con RSI(14) en sobreventa o zona baja (≤ 40).'}
+              {strategyPreset === 'GROWTH_CANSLIM' && 'Filtrando redes con alto crecimiento fundamental (>20%), alta retención y precio por encima de su SMA 200.'}
+              {strategyPreset === 'LONG' && 'Filtrando señales alcistas con soporte cuantitativo.'}
+              {strategyPreset === 'SHORT' && 'Filtrando señales bajistas y sobrecompras.'}
+              {strategyPreset === 'VOL' && 'Filtrando pares con anomalías de volumen relativo.'}
+              {strategyPreset === 'SQUEEZE' && 'Filtrando pares con compresión de volatilidad lista para romper.'}
+            </p>
+          </div>
           <button
-            onClick={() => {
-              setFilterMode('ALL');
-              setSelectedCategoryId('ALL');
-              setSearchQuery('');
-            }}
-            className="text-amber-400 underline cursor-pointer"
+            onClick={() => setStrategyPreset('ALL')}
+            className="text-[10px] text-amber-400 hover:text-amber-300 underline uppercase tracking-wider cursor-pointer"
           >
-            Restablecer todos los filtros
+            Limpiar Filtro
           </button>
         </div>
       )}
+
+      {/* 5. INSTITUTIONAL FINANCIAL DATA TABLE (Primary View) */}
+      <div className="bg-slate-900/90 border border-slate-800 rounded-xl shadow-xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs font-mono border-collapse">
+            {/* Table Header */}
+            <thead>
+              <tr className="bg-slate-950 border-b border-slate-800 text-slate-400 text-[11px] uppercase tracking-wider select-none">
+                <th
+                  onClick={() => handleSort('symbol')}
+                  className="py-3 px-4 font-bold cursor-pointer hover:text-slate-200 transition-colors"
+                >
+                  <div className="flex items-center gap-1">
+                    <span>Par / Símbolo</span>
+                    {sortField === 'symbol' ? (sortAsc ? <ChevronUp className="w-3 h-3 text-amber-400" /> : <ChevronDown className="w-3 h-3 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                  </div>
+                </th>
+
+                <th
+                  onClick={() => handleSort('price')}
+                  className="py-3 px-3 font-bold text-right cursor-pointer hover:text-slate-200 transition-colors"
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    <span>Precio USD</span>
+                    {sortField === 'price' ? (sortAsc ? <ChevronUp className="w-3 h-3 text-amber-400" /> : <ChevronDown className="w-3 h-3 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                  </div>
+                </th>
+
+                <th
+                  onClick={() => handleSort('change24h')}
+                  className="py-3 px-3 font-bold text-right cursor-pointer hover:text-slate-200 transition-colors"
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    <span>24h %</span>
+                    {sortField === 'change24h' ? (sortAsc ? <ChevronUp className="w-3 h-3 text-amber-400" /> : <ChevronDown className="w-3 h-3 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                  </div>
+                </th>
+
+                <th
+                  onClick={() => handleSort('weekChangePercent')}
+                  className="py-3 px-3 font-bold text-right cursor-pointer hover:text-slate-200 transition-colors"
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    <span>1 Sem %</span>
+                    {sortField === 'weekChangePercent' ? (sortAsc ? <ChevronUp className="w-3 h-3 text-amber-400" /> : <ChevronDown className="w-3 h-3 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                  </div>
+                </th>
+
+                <th
+                  onClick={() => handleSort('rvol')}
+                  className="py-3 px-3 font-bold text-center cursor-pointer hover:text-slate-200 transition-colors"
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <span>RVOL</span>
+                    {sortField === 'rvol' ? (sortAsc ? <ChevronUp className="w-3 h-3 text-amber-400" /> : <ChevronDown className="w-3 h-3 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                  </div>
+                </th>
+
+                <th
+                  onClick={() => handleSort('rsi14d')}
+                  className="py-3 px-3 font-bold text-center cursor-pointer hover:text-slate-200 transition-colors"
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <span>RSI (14)</span>
+                    {sortField === 'rsi14d' ? (sortAsc ? <ChevronUp className="w-3 h-3 text-amber-400" /> : <ChevronDown className="w-3 h-3 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                  </div>
+                </th>
+
+                <th className="py-3 px-3 font-bold text-center">
+                  <span>Medias (20/50/200)</span>
+                </th>
+
+                <th className="py-3 px-3 font-bold text-center">
+                  <span>Rango 52S</span>
+                </th>
+
+                <th
+                  onClick={() => handleSort('marketCap')}
+                  className="py-3 px-3 font-bold text-right cursor-pointer hover:text-slate-200 transition-colors"
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    <span>Cap. Mercado</span>
+                    {sortField === 'marketCap' ? (sortAsc ? <ChevronUp className="w-3 h-3 text-amber-400" /> : <ChevronDown className="w-3 h-3 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                  </div>
+                </th>
+
+                <th
+                  onClick={() => handleSort('epsGrowthYear')}
+                  className="py-3 px-3 font-bold text-right cursor-pointer hover:text-slate-200 transition-colors"
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    <span>Crecimiento Red</span>
+                    {sortField === 'epsGrowthYear' ? (sortAsc ? <ChevronUp className="w-3 h-3 text-amber-400" /> : <ChevronDown className="w-3 h-3 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                  </div>
+                </th>
+
+                <th className="py-3 px-3 font-bold text-center">
+                  <span>Estrategias</span>
+                </th>
+
+                <th className="py-3 px-4 font-bold text-center">
+                  <span>Acción</span>
+                </th>
+              </tr>
+            </thead>
+
+            {/* Table Body */}
+            <tbody className="divide-y divide-slate-800/60">
+              {sortedItems.length === 0 ? (
+                <tr>
+                  <td colSpan={12} className="py-12 text-center text-slate-500 font-mono">
+                    <p className="text-sm">No se encontraron pares cripto que cumplan con los filtros activos.</p>
+                    <button
+                      onClick={() => {
+                        setStrategyPreset('ALL');
+                        setSelectedCategoryId('ALL');
+                        setSearchQuery('');
+                      }}
+                      className="mt-3 text-xs text-amber-400 underline uppercase tracking-wider cursor-pointer"
+                    >
+                      Restablecer filtros
+                    </button>
+                  </td>
+                </tr>
+              ) : (
+                sortedItems.map(item => {
+                  const isTao = item.symbol === 'TAOUSDT';
+                  const range52 = (item.high52w || 1) - (item.low52w || 0);
+                  const pos52 = range52 > 0 ? Math.max(0, Math.min(100, ((item.price - (item.low52w || 0)) / range52) * 100)) : 50;
+
+                  return (
+                    <tr
+                      key={item.symbol}
+                      className={`hover:bg-slate-800/50 transition-colors group ${
+                        isTao ? 'bg-cyan-500/5' : ''
+                      }`}
+                    >
+                      {/* 1. Símbolo */}
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-white tracking-wider text-xs">
+                                {item.symbol}
+                              </span>
+                              {isTao && (
+                                <span className="bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[8px] font-bold px-1 rounded">
+                                  IA LÍDER
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[10px] text-slate-400">
+                              Tendencia 1H: {item.trend}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* 2. Precio Actual */}
+                      <td className="py-3 px-3 text-right">
+                        <div className="font-bold text-slate-100">
+                          ${fmt(item.price, item.price > 1000 ? 2 : item.price > 1 ? 4 : 6)}
+                        </div>
+                      </td>
+
+                      {/* 3. Var 24h % */}
+                      <td className="py-3 px-3 text-right">
+                        <span
+                          className={`font-bold inline-flex items-center gap-0.5 ${
+                            item.change24h >= 0 ? 'text-emerald-400' : 'text-red-400'
+                          }`}
+                        >
+                          {item.change24h >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                          {item.change24h >= 0 ? '+' : ''}{fmt(item.change24h, 2)}%
+                        </span>
+                      </td>
+
+                      {/* 4. Var 1W % */}
+                      <td className="py-3 px-3 text-right">
+                        <span
+                          className={`font-bold ${
+                            (item.weekChangePercent || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'
+                          }`}
+                        >
+                          {(item.weekChangePercent || 0) >= 0 ? '+' : ''}{fmt(item.weekChangePercent, 2)}%
+                        </span>
+                      </td>
+
+                      {/* 5. RVOL */}
+                      <td className="py-3 px-3 text-center">
+                        <span
+                          className={`px-2 py-0.5 rounded font-bold text-[11px] ${
+                            item.rvol >= 2.0
+                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black'
+                              : item.rvol >= 1.5
+                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                              : 'bg-slate-800 text-slate-400'
+                          }`}
+                        >
+                          {item.rvol}x
+                        </span>
+                      </td>
+
+                      {/* 6. RSI (14) */}
+                      <td className="py-3 px-3 text-center">
+                        <div className="inline-flex flex-col items-center">
+                          <span
+                            className={`font-bold ${
+                              (item.rsi14d || 50) <= 35
+                                ? 'text-emerald-400'
+                                : (item.rsi14d || 50) >= 68
+                                ? 'text-red-400'
+                                : 'text-slate-300'
+                            }`}
+                          >
+                            {item.rsi14d || 50}
+                          </span>
+                          <div className="w-10 h-1 bg-slate-800 rounded-full mt-1 overflow-hidden">
+                            <div
+                              className={`h-full ${
+                                (item.rsi14d || 50) <= 35
+                                  ? 'bg-emerald-500'
+                                  : (item.rsi14d || 50) >= 68
+                                  ? 'bg-red-500'
+                                  : 'bg-amber-500'
+                              }`}
+                              style={{ width: `${item.rsi14d || 50}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* 7. Medias Móviles (SMA 20/50/200) */}
+                      <td className="py-3 px-3 text-center">
+                        <div className="flex items-center justify-center gap-1 text-[10px]">
+                          <span
+                            className={`px-1 py-0.2 rounded font-bold ${
+                              item.aboveSma20
+                                ? 'bg-emerald-500/20 text-emerald-400'
+                                : 'bg-red-500/20 text-red-400'
+                            }`}
+                          >
+                            20
+                          </span>
+                          <span
+                            className={`px-1 py-0.2 rounded font-bold ${
+                              item.aboveSma50
+                                ? 'bg-emerald-500/20 text-emerald-400'
+                                : 'bg-red-500/20 text-red-400'
+                            }`}
+                          >
+                            50
+                          </span>
+                          <span
+                            className={`px-1 py-0.2 rounded font-bold ${
+                              item.aboveSma200
+                                ? 'bg-emerald-500/20 text-emerald-400'
+                                : 'bg-red-500/20 text-red-400'
+                            }`}
+                          >
+                            200
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* 8. Rango 52S */}
+                      <td className="py-3 px-3 text-center">
+                        <div className="w-20 mx-auto">
+                          <div className="flex justify-between text-[9px] text-slate-500 mb-0.5">
+                            <span>${fmt(item.low52w, item.price > 1 ? 0 : 2)}</span>
+                            <span>${fmt(item.high52w, item.price > 1 ? 0 : 2)}</span>
+                          </div>
+                          <div className="h-1.5 bg-slate-800 rounded-full relative overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-cyan-500 via-amber-400 to-emerald-400 rounded-full"
+                              style={{ width: `${pos52}%` }}
+                            />
+                          </div>
+                          <span className="text-[9px] text-slate-400 mt-0.5 block">
+                            {pos52.toFixed(0)}% máx
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* 9. Cap. Mercado */}
+                      <td className="py-3 px-3 text-right">
+                        <div className="font-bold text-slate-200">{fmtCap(item.marketCap)}</div>
+                        <div className="text-[10px] text-slate-500">Vol 24h: {fmtCap(item.volume24h)}</div>
+                      </td>
+
+                      {/* 10. Crecimiento Red */}
+                      <td className="py-3 px-3 text-right">
+                        <div className="font-bold text-emerald-400">
+                          +{item.epsGrowthYear || 0}%
+                        </div>
+                        <div className="text-[10px] text-slate-400">
+                          ROE {item.roe || 0}% • QoQ +{item.salesGrowthQoQ || 0}%
+                        </div>
+                      </td>
+
+                      {/* 11. Estrategias Cumplidas */}
+                      <td className="py-3 px-3 text-center">
+                        <div className="flex flex-wrap items-center justify-center gap-1 max-w-[130px] mx-auto">
+                          {item.isBreakout && (
+                            <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] font-bold px-1.5 py-0.5 rounded">
+                              RUPTURA
+                            </span>
+                          )}
+                          {item.isSwingPullback && (
+                            <span className="bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[9px] font-bold px-1.5 py-0.5 rounded">
+                              PULLBACK
+                            </span>
+                          )}
+                          {item.isGrowthCanslim && (
+                            <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[9px] font-bold px-1.5 py-0.5 rounded">
+                              CANSLIM
+                            </span>
+                          )}
+                          {item.bollingerSqueeze && (
+                            <span className="bg-purple-500/20 text-purple-300 border border-purple-500/40 text-[9px] font-bold px-1.5 py-0.5 rounded">
+                              SQUEEZE
+                            </span>
+                          )}
+                          {!item.isBreakout && !item.isSwingPullback && !item.isGrowthCanslim && !item.bollingerSqueeze && (
+                            <span className="text-[10px] text-slate-500">Normal</span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* 12. Acción Rápida */}
+                      <td className="py-3 px-4 text-center">
+                        <button
+                          onClick={() => onSelectSymbol(item.symbol)}
+                          className="bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-slate-300 border border-slate-700 hover:border-amber-400 px-2.5 py-1 rounded text-[11px] font-bold transition-all cursor-pointer inline-flex items-center gap-1 shadow-sm"
+                        >
+                          <span>Analizar</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 };

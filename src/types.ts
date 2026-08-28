@@ -210,14 +210,37 @@ export interface RiskCalculatorResult {
 }
 
 // 3. Multi-Pair Market Scanner Types
+export type StrategyPreset = 'ALL' | 'BREAKOUTS' | 'SWING_PULLBACKS' | 'GROWTH_CANSLIM' | 'LONG' | 'SHORT' | 'VOL' | 'SQUEEZE' | 'FUNDING_CARRY';
+
 export interface ScannerItem {
   symbol: string;
   price: number;
   change24h: number;
+  weekChangePercent?: number;
   volume24h: number;
+  avgVolume?: number;
+  marketCap?: number; // in USD (e.g. 50_000_000_000 for $50B)
   rvol: number;
   rsi15m: number;
   rsi1h: number;
+  rsi14d?: number;
+  sma20?: number;
+  sma50?: number;
+  sma200?: number;
+  high52w?: number;
+  low52w?: number;
+  epsGrowthYear?: number; // % e.g. 35.4
+  salesGrowthQoQ?: number; // % e.g. 22.1
+  roe?: number; // % e.g. 28.5
+  optionable?: boolean;
+  aboveSma20?: boolean;
+  aboveSma50?: boolean;
+  aboveSma200?: boolean;
+  isNewHigh52w?: boolean;
+  near52wHigh?: boolean; // within 8% of 52-week high
+  isBreakout?: boolean;
+  isSwingPullback?: boolean;
+  isGrowthCanslim?: boolean;
   trend: 'Alcista' | 'Bajista' | 'Neutral';
   signal: 'LONG' | 'SHORT' | 'SQUEEZE' | 'VOL_SPIKE' | 'NEUTRAL';
   signalStrength: number; // 1 to 5

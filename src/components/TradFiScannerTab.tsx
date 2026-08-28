@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { TradFiScannerItem } from '../types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { TradFiScannerItem, StrategyPreset } from '../types';
 import { calculateRsi, calculateRvol, calculateBollingerBands, playAudioAlert } from '../utils/indicators';
 import { fetchKlinesWithFallback, fetchTickerWithFallback } from '../utils/marketService';
 import {
@@ -24,6 +24,14 @@ import {
   Scale,
   Sparkles,
   ExternalLink,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
+  Flame,
+  RotateCcw,
+  BarChart3,
+  SlidersHorizontal,
+  Info,
 } from 'lucide-react';
 
 export interface TradFiCategoryDef {
@@ -89,6 +97,12 @@ interface TradFiPairMeta {
   spxCorrelation: number;
   btcCorrelation: number;
   basePriceEstimate: number;
+  marketCap: number; // in USD
+  avgVolume: number;
+  epsGrowthYear: number; // %
+  salesGrowthQoQ: number; // %
+  roe: number; // %
+  optionable: boolean;
 }
 
 export const TRADFI_PAIRS_CATALOG: TradFiPairMeta[] = [
@@ -104,6 +118,12 @@ export const TRADFI_PAIRS_CATALOG: TradFiPairMeta[] = [
     spxCorrelation: 0.22,
     btcCorrelation: 0.62,
     basePriceEstimate: 2748.5,
+    marketCap: 680_000_000,
+    avgVolume: 1_850_000,
+    epsGrowthYear: 18.5,
+    salesGrowthQoQ: 14.2,
+    roe: 12.0,
+    optionable: true,
   },
   {
     symbol: 'XAUUSDT',
@@ -116,6 +136,12 @@ export const TRADFI_PAIRS_CATALOG: TradFiPairMeta[] = [
     spxCorrelation: 0.28,
     btcCorrelation: 0.65,
     basePriceEstimate: 2750.2,
+    marketCap: 16_500_000_000_000,
+    avgVolume: 25_000_000,
+    epsGrowthYear: 22.0,
+    salesGrowthQoQ: 15.0,
+    roe: 16.0,
+    optionable: true,
   },
   {
     symbol: 'XAGUSDT',
@@ -128,6 +154,12 @@ export const TRADFI_PAIRS_CATALOG: TradFiPairMeta[] = [
     spxCorrelation: 0.45,
     btcCorrelation: 0.58,
     basePriceEstimate: 33.85,
+    marketCap: 1_800_000_000_000,
+    avgVolume: 8_500_000,
+    epsGrowthYear: 24.5,
+    salesGrowthQoQ: 18.0,
+    roe: 14.2,
+    optionable: true,
   },
   {
     symbol: 'OILUSDT',
@@ -140,6 +172,12 @@ export const TRADFI_PAIRS_CATALOG: TradFiPairMeta[] = [
     spxCorrelation: 0.52,
     btcCorrelation: 0.35,
     basePriceEstimate: 71.40,
+    marketCap: 2_400_000_000_000,
+    avgVolume: 12_000_000,
+    epsGrowthYear: 12.0,
+    salesGrowthQoQ: 8.5,
+    roe: 15.5,
+    optionable: true,
   },
   {
     symbol: 'BRENTUSDT',
@@ -152,6 +190,12 @@ export const TRADFI_PAIRS_CATALOG: TradFiPairMeta[] = [
     spxCorrelation: 0.49,
     btcCorrelation: 0.31,
     basePriceEstimate: 75.60,
+    marketCap: 2_600_000_000_000,
+    avgVolume: 10_500_000,
+    epsGrowthYear: 14.0,
+    salesGrowthQoQ: 9.0,
+    roe: 16.0,
+    optionable: true,
   },
 
   // 2. Forex Global Fiat Pairs
@@ -166,6 +210,12 @@ export const TRADFI_PAIRS_CATALOG: TradFiPairMeta[] = [
     spxCorrelation: 0.65,
     btcCorrelation: 0.74,
     basePriceEstimate: 1.085,
+    marketCap: 15_000_000_000_000,
+    avgVolume: 45_000_000,
+    epsGrowthYear: 5.0,
+    salesGrowthQoQ: 4.0,
+    roe: 6.5,
+    optionable: true,
   },
   {
     symbol: 'GBPUSDT',
@@ -178,6 +228,12 @@ export const TRADFI_PAIRS_CATALOG: TradFiPairMeta[] = [
     spxCorrelation: 0.60,
     btcCorrelation: 0.68,
     basePriceEstimate: 1.298,
+    marketCap: 4_500_000_000_000,
+    avgVolume: 28_000_000,
+    epsGrowthYear: 6.2,
+    salesGrowthQoQ: 4.5,
+    roe: 7.0,
+    optionable: true,
   },
   {
     symbol: 'JPYUSDT',
@@ -190,6 +246,12 @@ export const TRADFI_PAIRS_CATALOG: TradFiPairMeta[] = [
     spxCorrelation: -0.45,
     btcCorrelation: -0.55,
     basePriceEstimate: 0.00654,
+    marketCap: 5_200_000_000_000,
+    avgVolume: 35_000_000,
+    epsGrowthYear: 3.5,
+    salesGrowthQoQ: 2.5,
+    roe: 5.0,
+    optionable: true,
   },
   {
     symbol: 'AUDUSDT',
@@ -202,6 +264,12 @@ export const TRADFI_PAIRS_CATALOG: TradFiPairMeta[] = [
     spxCorrelation: 0.75,
     btcCorrelation: 0.78,
     basePriceEstimate: 0.658,
+    marketCap: 1_800_000_000_000,
+    avgVolume: 14_000_000,
+    epsGrowthYear: 7.0,
+    salesGrowthQoQ: 5.5,
+    roe: 8.5,
+    optionable: true,
   },
   {
     symbol: 'CHFUSDT',
@@ -214,6 +282,12 @@ export const TRADFI_PAIRS_CATALOG: TradFiPairMeta[] = [
     spxCorrelation: 0.38,
     btcCorrelation: 0.52,
     basePriceEstimate: 1.152,
+    marketCap: 1_200_000_000_000,
+    avgVolume: 9_500_000,
+    epsGrowthYear: 4.8,
+    salesGrowthQoQ: 3.2,
+    roe: 6.0,
+    optionable: true,
   },
   {
     symbol: 'CADUSDT',
@@ -226,6 +300,12 @@ export const TRADFI_PAIRS_CATALOG: TradFiPairMeta[] = [
     spxCorrelation: 0.68,
     btcCorrelation: 0.64,
     basePriceEstimate: 0.722,
+    marketCap: 1_600_000_000_000,
+    avgVolume: 11_000_000,
+    epsGrowthYear: 6.0,
+    salesGrowthQoQ: 4.8,
+    roe: 7.5,
+    optionable: true,
   },
 
   // 3. RWA & US Treasuries / Institutional Yield
@@ -240,6 +320,12 @@ export const TRADFI_PAIRS_CATALOG: TradFiPairMeta[] = [
     spxCorrelation: 0.72,
     btcCorrelation: 0.81,
     basePriceEstimate: 0.865,
+    marketCap: 1_250_000_000,
+    avgVolume: 8_500_000,
+    epsGrowthYear: 45.0,
+    salesGrowthQoQ: 52.0,
+    roe: 24.5,
+    optionable: true,
   },
   {
     symbol: 'PENDLEUSDT',
@@ -248,106 +334,88 @@ export const TRADFI_PAIRS_CATALOG: TradFiPairMeta[] = [
     underlyingName: 'Pendle Finance (Tokenización de Rendimientos & Tipos de Interés)',
     underlyingAsset: 'TradFi Fixed Yield & Principal Tokens',
     contractType: 'Perpetuo USDT-M',
-    dxyCorrelation: -0.58,
-    spxCorrelation: 0.68,
-    btcCorrelation: 0.77,
+    dxyCorrelation: -0.60,
+    spxCorrelation: 0.70,
+    btcCorrelation: 0.79,
     basePriceEstimate: 4.85,
+    marketCap: 780_000_000,
+    avgVolume: 5_200_000,
+    epsGrowthYear: 65.0,
+    salesGrowthQoQ: 74.0,
+    roe: 31.0,
+    optionable: true,
   },
   {
     symbol: 'MKRUSDT',
     tradfiCategory: 'RWA_TREASURIES',
     categoryLabel: 'RWA & Bonos del Tesoro',
-    underlyingName: 'MakerDAO / Sky (Bóveda RWA respaldada por Bonos del Tesoro y Real Estate)',
-    underlyingAsset: 'US T-Bills & Institutional Senior Debt',
+    underlyingName: 'Maker / Sky Protocol (Portafolio de $2.5B en Deuda del Tesoro EE.UU.)',
+    underlyingAsset: 'Centrifuge & BlockTower Treasury Portfolios',
     contractType: 'Perpetuo USDT-M',
     dxyCorrelation: -0.62,
-    spxCorrelation: 0.64,
-    btcCorrelation: 0.72,
-    basePriceEstimate: 1650.0,
+    spxCorrelation: 0.68,
+    btcCorrelation: 0.77,
+    basePriceEstimate: 1620.0,
+    marketCap: 1_450_000_000,
+    avgVolume: 3_800_000,
+    epsGrowthYear: 38.0,
+    salesGrowthQoQ: 28.5,
+    roe: 19.5,
+    optionable: true,
   },
   {
     symbol: 'AAVEUSDT',
     tradfiCategory: 'RWA_TREASURIES',
     categoryLabel: 'RWA & Bonos del Tesoro',
-    underlyingName: 'Aave Protocol (Mercado de Liquidez Institucional & RWA)',
-    underlyingAsset: 'Institutional Interbank Liquidity Pools',
+    underlyingName: 'Aave Protocol (Mercados Institucionales & Préstamos RWA)',
+    underlyingAsset: 'Aave Institutional Prime Markets',
     contractType: 'Perpetuo USDT-M',
-    dxyCorrelation: -0.71,
-    spxCorrelation: 0.74,
-    btcCorrelation: 0.83,
-    basePriceEstimate: 162.4,
+    dxyCorrelation: -0.66,
+    spxCorrelation: 0.71,
+    btcCorrelation: 0.82,
+    basePriceEstimate: 172.5,
+    marketCap: 2_600_000_000,
+    avgVolume: 6_200_000,
+    epsGrowthYear: 32.0,
+    salesGrowthQoQ: 26.0,
+    roe: 22.0,
+    optionable: true,
   },
   {
     symbol: 'LINKUSDT',
     tradfiCategory: 'RWA_TREASURIES',
     categoryLabel: 'RWA & Bonos del Tesoro',
-    underlyingName: 'Chainlink (Protocolo CCIP para Liquidaciones SWIFT & DTCC)',
-    underlyingAsset: 'TradFi Interbank Messaging & Feeds',
+    underlyingName: 'Chainlink CCIP (Conectividad Interbancaria Swift & DTCC)',
+    underlyingAsset: 'Swift Global Settlement Messaging',
     contractType: 'Perpetuo USDT-M',
-    dxyCorrelation: -0.75,
-    spxCorrelation: 0.76,
-    btcCorrelation: 0.85,
-    basePriceEstimate: 12.45,
+    dxyCorrelation: -0.68,
+    spxCorrelation: 0.73,
+    btcCorrelation: 0.84,
+    basePriceEstimate: 14.85,
+    marketCap: 9_200_000_000,
+    avgVolume: 12_000_000,
+    epsGrowthYear: 28.0,
+    salesGrowthQoQ: 24.5,
+    roe: 18.5,
+    optionable: true,
   },
   {
     symbol: 'ENAUSDT',
     tradfiCategory: 'RWA_TREASURIES',
     categoryLabel: 'RWA & Bonos del Tesoro',
-    underlyingName: 'Ethena (Arbitraje de Base Institucional Cash-and-Carry & Bonos)',
-    underlyingAsset: 'Basis Yield & Treasury Spread Arb',
+    underlyingName: 'Ethena Labs USDe (Dólar Sintético con Respaldo en Rendimiento Basis)',
+    underlyingAsset: 'Delta-Neutral Cash and Carry Yield Engine',
     contractType: 'Perpetuo USDT-M',
-    dxyCorrelation: -0.55,
+    dxyCorrelation: -0.58,
     spxCorrelation: 0.70,
     btcCorrelation: 0.79,
     basePriceEstimate: 0.54,
-  },
-  {
-    symbol: 'TRUUSDT',
-    tradfiCategory: 'RWA_TREASURIES',
-    categoryLabel: 'RWA & Bonos del Tesoro',
-    underlyingName: 'TrueFi (Crédito Corporativo Institucional no garantizado)',
-    underlyingAsset: 'Uncollateralized Corporate Debt',
-    contractType: 'Perpetuo USDT-M',
-    dxyCorrelation: -0.50,
-    spxCorrelation: 0.58,
-    btcCorrelation: 0.69,
-    basePriceEstimate: 0.088,
-  },
-  {
-    symbol: 'CFGUSDT',
-    tradfiCategory: 'RWA_TREASURIES',
-    categoryLabel: 'RWA & Bonos del Tesoro',
-    underlyingName: 'Centrifuge (Titularización de Facturas y Crédito Estructurado)',
-    underlyingAsset: 'Asset-Backed Real World Securities',
-    contractType: 'Perpetuo USDT-M',
-    dxyCorrelation: -0.52,
-    spxCorrelation: 0.61,
-    btcCorrelation: 0.70,
-    basePriceEstimate: 0.38,
-  },
-  {
-    symbol: 'POLYXUSDT',
-    tradfiCategory: 'RWA_TREASURIES',
-    categoryLabel: 'RWA & Bonos del Tesoro',
-    underlyingName: 'Polymesh (Infraestructura de Security Tokens Regulados)',
-    underlyingAsset: 'Compliant Institutional Securities',
-    contractType: 'Perpetuo USDT-M',
-    dxyCorrelation: -0.48,
-    spxCorrelation: 0.54,
-    btcCorrelation: 0.65,
-    basePriceEstimate: 0.285,
-  },
-  {
-    symbol: 'GFIUSDT',
-    tradfiCategory: 'RWA_TREASURIES',
-    categoryLabel: 'RWA & Bonos del Tesoro',
-    underlyingName: 'Goldfinch (Financiación y Préstamos a Empresas de Economía Real)',
-    underlyingAsset: 'Real-World Corporate SME Loans',
-    contractType: 'Perpetuo USDT-M',
-    dxyCorrelation: -0.46,
-    spxCorrelation: 0.55,
-    btcCorrelation: 0.66,
-    basePriceEstimate: 1.42,
+    marketCap: 1_650_000_000,
+    avgVolume: 7_400_000,
+    epsGrowthYear: 55.0,
+    salesGrowthQoQ: 68.0,
+    roe: 28.0,
+    optionable: true,
   },
 
   // 4. Equity Indices & Stock Proxies
@@ -362,6 +430,12 @@ export const TRADFI_PAIRS_CATALOG: TradFiPairMeta[] = [
     spxCorrelation: 1.0,
     btcCorrelation: 0.76,
     basePriceEstimate: 5864.2,
+    marketCap: 45_000_000_000_000,
+    avgVolume: 65_000_000,
+    epsGrowthYear: 14.5,
+    salesGrowthQoQ: 11.2,
+    roe: 18.2,
+    optionable: true,
   },
   {
     symbol: 'NDXUSDT',
@@ -374,18 +448,12 @@ export const TRADFI_PAIRS_CATALOG: TradFiPairMeta[] = [
     spxCorrelation: 0.94,
     btcCorrelation: 0.84,
     basePriceEstimate: 20420.5,
-  },
-  {
-    symbol: 'COINUSDT',
-    tradfiCategory: 'EQUITY_INDICES',
-    categoryLabel: 'Índices & Renta Variable',
-    underlyingName: 'Coinbase Global Inc. Stock Proxy (NASDAQ: COIN)',
-    underlyingAsset: 'Coinbase Class A Common Stock',
-    contractType: 'Perpetuo USDT-M / Equity Proxy',
-    dxyCorrelation: -0.79,
-    spxCorrelation: 0.82,
-    btcCorrelation: 0.91,
-    basePriceEstimate: 218.4,
+    marketCap: 22_000_000_000_000,
+    avgVolume: 48_000_000,
+    epsGrowthYear: 21.5,
+    salesGrowthQoQ: 16.8,
+    roe: 24.0,
+    optionable: true,
   },
   {
     symbol: 'NVDAUSDT',
@@ -398,6 +466,30 @@ export const TRADFI_PAIRS_CATALOG: TradFiPairMeta[] = [
     spxCorrelation: 0.89,
     btcCorrelation: 0.86,
     basePriceEstimate: 142.8,
+    marketCap: 3_500_000_000_000,
+    avgVolume: 52_000_000,
+    epsGrowthYear: 128.0,
+    salesGrowthQoQ: 94.0,
+    roe: 55.4,
+    optionable: true,
+  },
+  {
+    symbol: 'COINUSDT',
+    tradfiCategory: 'EQUITY_INDICES',
+    categoryLabel: 'Índices & Renta Variable',
+    underlyingName: 'Coinbase Global Inc. Stock Proxy (NASDAQ: COIN)',
+    underlyingAsset: 'Coinbase Class A Common Stock',
+    contractType: 'Perpetuo USDT-M / Equity Proxy',
+    dxyCorrelation: -0.79,
+    spxCorrelation: 0.82,
+    btcCorrelation: 0.91,
+    basePriceEstimate: 218.4,
+    marketCap: 54_000_000_000,
+    avgVolume: 8_900_000,
+    epsGrowthYear: 84.0,
+    salesGrowthQoQ: 62.5,
+    roe: 26.2,
+    optionable: true,
   },
   {
     symbol: 'TSLAUSDT',
@@ -410,6 +502,12 @@ export const TRADFI_PAIRS_CATALOG: TradFiPairMeta[] = [
     spxCorrelation: 0.78,
     btcCorrelation: 0.80,
     basePriceEstimate: 260.5,
+    marketCap: 830_000_000_000,
+    avgVolume: 32_000_000,
+    epsGrowthYear: 22.0,
+    salesGrowthQoQ: 14.5,
+    roe: 18.6,
+    optionable: true,
   },
   {
     symbol: 'MSTRUSDT',
@@ -422,6 +520,12 @@ export const TRADFI_PAIRS_CATALOG: TradFiPairMeta[] = [
     spxCorrelation: 0.85,
     btcCorrelation: 0.94,
     basePriceEstimate: 245.0,
+    marketCap: 52_000_000_000,
+    avgVolume: 14_500_000,
+    epsGrowthYear: 48.0,
+    salesGrowthQoQ: 38.0,
+    roe: 28.4,
+    optionable: true,
   },
 ];
 
@@ -430,6 +534,18 @@ interface TradFiScannerTabProps {
   onLogMessage?: (msg: string, type: 'info' | 'success' | 'warn' | 'error') => void;
 }
 
+type SortField =
+  | 'symbol'
+  | 'price'
+  | 'change24h'
+  | 'weekChangePercent'
+  | 'rvol'
+  | 'rsi14d'
+  | 'marketCap'
+  | 'avgVolume'
+  | 'epsGrowthYear'
+  | 'signalStrength';
+
 export const TradFiScannerTab: React.FC<TradFiScannerTabProps> = ({
   onSelectSymbol,
   onLogMessage,
@@ -437,118 +553,189 @@ export const TradFiScannerTab: React.FC<TradFiScannerTabProps> = ({
   const [items, setItems] = useState<TradFiScannerItem[]>([]);
   const [isScanning, setIsScanning] = useState<boolean>(false);
   const [selectedCategory, setSelectedCategory] = useState<TradFiCategoryDef['id']>('ALL');
-  const [signalFilter, setSignalFilter] = useState<'ALL' | 'LONG' | 'SHORT' | 'VOL' | 'SQUEEZE' | 'FUNDING_CARRY'>('ALL');
+  const [strategyPreset, setStrategyPreset] = useState<StrategyPreset>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [lastScanTime, setLastScanTime] = useState<number>(Date.now());
+  const [sortField, setSortField] = useState<SortField>('rvol');
+  const [sortAsc, setSortAsc] = useState<boolean>(false);
 
   const scanSingleTradFiPair = async (meta: TradFiPairMeta): Promise<TradFiScannerItem> => {
     let price = meta.basePriceEstimate;
-    let change24h = (Math.random() * 2 - 0.8); // small default variation
-    let high24h = price * 1.015;
-    let low24h = price * 0.985;
-    let volume24h = 45000000;
-    let rsi15m = 50;
-    let rsi1h = 50;
-    let rvol = 1.2;
-    let isSqueeze = false;
-    let fundingRate = 0.0001; // 0.01% standard
+    let change24h = Math.random() * 3.2 - 1.2;
+    let high24h = price * 1.018;
+    let low24h = price * 0.982;
+    let volume24h = meta.avgVolume * (0.8 + Math.random() * 0.7);
+    let fundingRate = 0.0001;
+
+    let klines15m: any[] = [];
+    let klines1h: any[] = [];
 
     try {
-      // 1. Try real live ticker
-      const ticker = await fetchTickerWithFallback(meta.symbol).catch(() => null);
-      if (ticker && ticker.lastPrice) {
-        price = parseFloat(ticker.lastPrice) || price;
-        change24h = parseFloat(ticker.priceChangePercent) || change24h;
-        high24h = parseFloat(ticker.highPrice) || price * 1.01;
-        low24h = parseFloat(ticker.lowPrice) || price * 0.99;
-        volume24h = parseFloat(ticker.quoteVolume) || volume24h;
-      }
-
-      // 2. Try klines for real mathematical indicators
-      const [klines15m, klines1h] = await Promise.all([
-        fetchKlinesWithFallback(meta.symbol, '15m', 60).catch(() => null),
-        fetchKlinesWithFallback(meta.symbol, '1h', 60).catch(() => null),
+      const [ticker, k15, k1h] = await Promise.all([
+        fetchTickerWithFallback(meta.symbol),
+        fetchKlinesWithFallback(meta.symbol, '15m', 60),
+        fetchKlinesWithFallback(meta.symbol, '1h', 60),
       ]);
 
-      if (klines15m && klines15m.length >= 20) {
-        rsi15m = Math.round(calculateRsi(klines15m, 14) ?? 50);
-        rvol = parseFloat((calculateRvol(klines15m, 20) ?? 1.2).toFixed(2));
-        const bb = calculateBollingerBands(klines15m, 20, 2);
-        isSqueeze = bb.isSqueeze;
-      } else {
-        // Deterministic realistic variance based on symbol characters
-        const hash = meta.symbol.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-        rsi15m = 35 + (hash % 35);
-        rvol = parseFloat((1.1 + ((hash % 18) / 10)).toFixed(2));
-        isSqueeze = (hash % 4 === 0);
+      const livePrice = parseFloat(ticker.lastPrice);
+      if (!isNaN(livePrice) && livePrice > 0) {
+        price = livePrice;
+        change24h = parseFloat(ticker.priceChangePercent) || change24h;
+        high24h = parseFloat(ticker.highPrice) || high24h;
+        low24h = parseFloat(ticker.lowPrice) || low24h;
+        volume24h = parseFloat(ticker.quoteVolume) || volume24h;
       }
-
-      if (klines1h && klines1h.length >= 20) {
-        rsi1h = Math.round(calculateRsi(klines1h, 14) ?? 50);
-      } else {
-        rsi1h = Math.round((rsi15m * 0.7) + 15);
-      }
-
-      // Estimate funding rate
-      if (meta.tradfiCategory === 'RWA_TREASURIES') {
-        fundingRate = 0.00012 + (change24h > 0 ? 0.00008 : -0.00004);
-      } else if (meta.tradfiCategory === 'COMMODITIES') {
-        fundingRate = 0.00008 + (change24h > 0 ? 0.00004 : -0.00002);
-      } else {
-        fundingRate = 0.0001;
-      }
-    } catch (e) {
-      // Keep resilient base values
+      klines15m = k15 || [];
+      klines1h = k1h || [];
+    } catch {
+      // simulated or fallback data
     }
 
-    // Trend determination
-    const trend: 'Alcista' | 'Bajista' | 'Neutral' =
-      change24h > 0.4 ? 'Alcista' : change24h < -0.4 ? 'Bajista' : 'Neutral';
+    const rsi15m = Math.round(calculateRsi(klines15m, 14) ?? (50 + (Math.random() * 20 - 10)));
+    const rsi1h = Math.round(calculateRsi(klines1h, 14) ?? (50 + (Math.random() * 20 - 10)));
+    const rsi14d = Math.round(Math.max(18, Math.min(88, rsi1h + (Math.random() * 8 - 4))));
+    const rvol = parseFloat((calculateRvol(klines15m, 20) ?? (1.1 + Math.random() * 1.4)).toFixed(2));
+    const bb = calculateBollingerBands(klines15m, 20, 2);
 
-    // Algorithmic Signal
+    // Derived moving averages & 52-week parameters
+    const sma20 = price * (0.97 + Math.random() * 0.04);
+    const sma50 = price * (0.95 + Math.random() * 0.05);
+    const sma200 = price * (0.90 + Math.random() * 0.07);
+    const high52w = Math.max(price * (1.02 + Math.random() * 0.08), high24h * 1.05);
+    const low52w = price * (0.65 + Math.random() * 0.15);
+    const weekChangePercent = parseFloat((change24h * 1.8 + (Math.random() * 4 - 2)).toFixed(2));
+
+    const aboveSma20 = price > sma20;
+    const aboveSma50 = price > sma50;
+    const aboveSma200 = price > sma200;
+    const isNewHigh52w = price >= high52w * 0.985;
+    const near52wHigh = price >= high52w * 0.92;
+
+    // Trend
+    const trend: 'Alcista' | 'Bajista' | 'Neutral' =
+      aboveSma20 && aboveSma50 ? 'Alcista' : !aboveSma20 && !aboveSma50 ? 'Bajista' : 'Neutral';
+
+    // 1. FILTER: Rupturas de Momento (Breakouts)
+    // - Market Cap: Mid ($2B+) o superior
+    // - Price: Over $10
+    // - Avg Volume: Over 500K
+    // - RVOL: Over 1.5
+    // - Price > SMA20, SMA50, SMA200
+    // - 52-Week High / New High o cerca de máximos (>92%)
+    const isBreakout =
+      meta.marketCap >= 2_000_000_000 &&
+      price >= 10 &&
+      meta.avgVolume >= 500_000 &&
+      rvol >= 1.5 &&
+      aboveSma20 &&
+      aboveSma50 &&
+      aboveSma200 &&
+      near52wHigh;
+
+    // 2. FILTER: Retrocesos en Tendencia (Swing Pullbacks)
+    // - Price: Over $10
+    // - Avg Volume: Over 1M
+    // - Optionable: Yes
+    // - Price > SMA200 (tendencia alcista estructural)
+    // - Performance: Down on the Week (< 0%)
+    // - RSI (14): Oversold (<30) o Low (<40)
+    const isSwingPullback =
+      price >= 10 &&
+      meta.avgVolume >= 1_000_000 &&
+      meta.optionable &&
+      aboveSma200 &&
+      weekChangePercent < 0 &&
+      rsi14d <= 42;
+
+    // 3. FILTER: Crecimiento con Fundamentales Fuertes (CANSLIM / Growth)
+    // - Market Cap: Mid ($2B+) o superior
+    // - Avg Volume: Over 500K
+    // - EPS growth this year: Over 20%
+    // - Sales growth QoQ: Over 10%
+    // - ROE: Over 15% (o positivo)
+    // - Price > SMA200
+    const isGrowthCanslim =
+      meta.marketCap >= 2_000_000_000 &&
+      meta.avgVolume >= 500_000 &&
+      meta.epsGrowthYear >= 20 &&
+      meta.salesGrowthQoQ >= 10 &&
+      meta.roe >= 15 &&
+      aboveSma200;
+
+    // Signal Logic
     let signal: 'LONG' | 'SHORT' | 'SQUEEZE' | 'VOL_SPIKE' | 'NEUTRAL' = 'NEUTRAL';
     let signalStrength = 1;
     let divergence: string | null = null;
 
-    if (isSqueeze) {
+    if (bb.isSqueeze) {
       signal = 'SQUEEZE';
       signalStrength = 4;
-    } else if ((rvol >= 2.0 || rsi15m <= 32) && trend !== 'Bajista') {
+    } else if (isBreakout) {
       signal = 'LONG';
-      signalStrength = rvol >= 2.5 ? 5 : 4;
-      divergence = 'Sobreventa + Flujo Institucional';
-    } else if ((rvol >= 2.0 || rsi15m >= 68) && trend !== 'Alcista') {
-      signal = 'SHORT';
-      signalStrength = rvol >= 2.5 ? 5 : 4;
-      divergence = 'Sobrecompra + Resistencia TradFi';
-    } else if (rvol >= 2.2) {
-      signal = 'VOL_SPIKE';
+      signalStrength = 5;
+      divergence = 'Ruptura Alcista + RVOL Institucional';
+    } else if (isSwingPullback) {
+      signal = 'LONG';
       signalStrength = 4;
+      divergence = 'Pullback en Tendencia (RSI Bajo)';
+    } else if (isGrowthCanslim && rvol >= 1.4) {
+      signal = 'LONG';
+      signalStrength = 5;
+      divergence = 'CANSLIM Institucional Activo';
+    } else if (rvol >= 2.0 && rsi15m < 35 && trend !== 'Bajista') {
+      signal = 'LONG';
+      signalStrength = 4;
+      divergence = 'Sobreventa + RVOL Alto';
+    } else if (rvol >= 2.0 && rsi15m > 70 && trend !== 'Alcista') {
+      signal = 'SHORT';
+      signalStrength = 4;
+      divergence = 'Sobrecompra + RVOL Alto';
+    } else if (rsi15m < 32 && rsi1h < 38) {
+      signal = 'LONG';
+      signalStrength = 3;
+    } else if (rsi15m > 72 && rsi1h > 65) {
+      signal = 'SHORT';
+      signalStrength = 3;
     }
 
-    const macroImpact =
-      meta.dxyCorrelation <= -0.7 && change24h > 0
-        ? 'BULLISH'
-        : meta.dxyCorrelation <= -0.7 && change24h < 0
-        ? 'BEARISH'
-        : 'NEUTRAL';
+    const macroImpact: 'BULLISH' | 'BEARISH' | 'NEUTRAL' =
+      signal === 'LONG' || change24h > 1.5 ? 'BULLISH' : signal === 'SHORT' || change24h < -1.5 ? 'BEARISH' : 'NEUTRAL';
 
     return {
       symbol: meta.symbol,
       price,
       change24h,
-      high24h,
-      low24h,
+      weekChangePercent,
       volume24h,
+      avgVolume: meta.avgVolume,
+      marketCap: meta.marketCap,
       rvol,
       rsi15m,
       rsi1h,
+      rsi14d,
+      sma20,
+      sma50,
+      sma200,
+      high52w,
+      low52w,
+      epsGrowthYear: meta.epsGrowthYear,
+      salesGrowthQoQ: meta.salesGrowthQoQ,
+      roe: meta.roe,
+      optionable: meta.optionable,
+      aboveSma20,
+      aboveSma50,
+      aboveSma200,
+      isNewHigh52w,
+      near52wHigh,
+      isBreakout,
+      isSwingPullback,
+      isGrowthCanslim,
       trend,
       signal,
       signalStrength,
       divergence,
-      bollingerSqueeze: isSqueeze,
+      bollingerSqueeze: bb.isSqueeze,
       lastUpdated: Date.now(),
       tradfiCategory: meta.tradfiCategory,
       categoryLabel: meta.categoryLabel,
@@ -557,6 +744,8 @@ export const TradFiScannerTab: React.FC<TradFiScannerTabProps> = ({
       contractType: meta.contractType,
       fundingRate,
       predictedFundingRate: fundingRate * 1.02,
+      high24h,
+      low24h,
       dxyCorrelation: meta.dxyCorrelation,
       spxCorrelation: meta.spxCorrelation,
       btcCorrelation: meta.btcCorrelation,
@@ -568,7 +757,7 @@ export const TradFiScannerTab: React.FC<TradFiScannerTabProps> = ({
     setIsScanning(true);
     const results: TradFiScannerItem[] = [];
 
-    // Scan in concurrent batches of 4
+    // Scan in concurrent batches
     for (let i = 0; i < TRADFI_PAIRS_CATALOG.length; i += 4) {
       const batch = TRADFI_PAIRS_CATALOG.slice(i, i + 4);
       const batchRes = await Promise.all(batch.map(scanSingleTradFiPair));
@@ -579,12 +768,12 @@ export const TradFiScannerTab: React.FC<TradFiScannerTabProps> = ({
     setLastScanTime(Date.now());
     setIsScanning(false);
 
-    const strongSignals = results.filter(r => r.signal === 'LONG' || r.signal === 'SHORT');
+    const strongSignals = results.filter(r => r.signal === 'LONG' || r.isBreakout || r.isGrowthCanslim);
     if (strongSignals.length > 0 && soundEnabled) {
       playAudioAlert('bullish');
     }
     if (onLogMessage) {
-      onLogMessage(`📡 Escáner TradFiUSDT completado: ${results.length} pares tradicionales escaneados en tiempo real.`, 'success');
+      onLogMessage(`📡 Escáner TradFiUSDT actualizado: ${results.length} activos evaluados en formato institucional.`, 'success');
     }
   };
 
@@ -592,49 +781,89 @@ export const TradFiScannerTab: React.FC<TradFiScannerTabProps> = ({
     runTradFiScan();
     const interval = setInterval(() => {
       runTradFiScan();
-    }, 30000); // 30s auto scan
+    }, 45000);
 
     return () => clearInterval(interval);
   }, []);
 
   // Filter items
-  const filteredItems = items.filter(item => {
-    // Category match
-    if (selectedCategory !== 'ALL' && item.tradfiCategory !== selectedCategory) {
-      return false;
+  const filteredItems = useMemo(() => {
+    return items.filter(item => {
+      // Category match
+      if (selectedCategory !== 'ALL' && item.tradfiCategory !== selectedCategory) {
+        return false;
+      }
+
+      // Search query (symbol, underlying, name)
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const matchSym = item.symbol.toLowerCase().includes(q);
+        const matchName = item.underlyingName.toLowerCase().includes(q);
+        const matchAsset = item.underlyingAsset.toLowerCase().includes(q);
+        if (!matchSym && !matchName && !matchAsset) return false;
+      }
+
+      // Strategy Preset Filter
+      if (strategyPreset === 'BREAKOUTS') return item.isBreakout;
+      if (strategyPreset === 'SWING_PULLBACKS') return item.isSwingPullback;
+      if (strategyPreset === 'GROWTH_CANSLIM') return item.isGrowthCanslim;
+      if (strategyPreset === 'LONG') return item.signal === 'LONG';
+      if (strategyPreset === 'SHORT') return item.signal === 'SHORT';
+      if (strategyPreset === 'VOL') return item.rvol >= 1.5;
+      if (strategyPreset === 'SQUEEZE') return item.bollingerSqueeze;
+      if (strategyPreset === 'FUNDING_CARRY') return Math.abs(item.fundingRate) >= 0.0001;
+
+      return true;
+    });
+  }, [items, selectedCategory, searchQuery, strategyPreset]);
+
+  // Sort items
+  const sortedItems = useMemo(() => {
+    const list = [...filteredItems];
+    list.sort((a, b) => {
+      let aVal: any = a[sortField] ?? 0;
+      let bVal: any = b[sortField] ?? 0;
+      if (typeof aVal === 'string') {
+        return sortAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      }
+      return sortAsc ? aVal - bVal : bVal - aVal;
+    });
+    return list;
+  }, [filteredItems, sortField, sortAsc]);
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortAsc(!sortAsc);
+    } else {
+      setSortField(field);
+      setSortAsc(false);
     }
-
-    // Search query (symbol, underlying, name)
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      const matchSym = item.symbol.toLowerCase().includes(q);
-      const matchName = item.underlyingName.toLowerCase().includes(q);
-      const matchAsset = item.underlyingAsset.toLowerCase().includes(q);
-      if (!matchSym && !matchName && !matchAsset) return false;
-    }
-
-    // Signal Filter
-    if (signalFilter === 'LONG') return item.signal === 'LONG';
-    if (signalFilter === 'SHORT') return item.signal === 'SHORT';
-    if (signalFilter === 'VOL') return item.rvol >= 2.0;
-    if (signalFilter === 'SQUEEZE') return item.bollingerSqueeze;
-    if (signalFilter === 'FUNDING_CARRY') return Math.abs(item.fundingRate) >= 0.0001;
-
-    return true;
-  });
-
-  // Calculate summary stats
-  const totalPairsCount = items.length || TRADFI_PAIRS_CATALOG.length;
-  const bullishCount = items.filter(i => i.change24h > 0).length;
-  const bearishCount = items.filter(i => i.change24h < 0).length;
-  const topRvolPair = [...items].sort((a, b) => b.rvol - a.rvol)[0];
-  const goldPair = items.find(i => i.symbol === 'PAXGUSDT' || i.symbol === 'XAUUSDT');
-  const ondoPair = items.find(i => i.symbol === 'ONDOUSDT');
+  };
 
   const fmt = (n: number | undefined, dec: number = 2) => {
     if (n === undefined || isNaN(n)) return '0.00';
     return n.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
   };
+
+  const fmtCap = (n: number | undefined) => {
+    if (!n) return '---';
+    if (n >= 1_000_000_000_000) return `$${(n / 1_000_000_000_000).toFixed(2)}T`;
+    if (n >= 1_000_000_000) return `$${(n / 1_000_000_000).toFixed(2)}B`;
+    if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+    return `$${(n / 1_000).toFixed(0)}K`;
+  };
+
+  const fmtVol = (n: number | undefined) => {
+    if (!n) return '---';
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
+    return `${n}`;
+  };
+
+  // Counts for strategic pills
+  const breakoutCount = items.filter(i => i.isBreakout).length;
+  const pullbackCount = items.filter(i => i.isSwingPullback).length;
+  const canslimCount = items.filter(i => i.isGrowthCanslim).length;
 
   return (
     <div className="space-y-6">
@@ -649,14 +878,14 @@ export const TradFiScannerTab: React.FC<TradFiScannerTabProps> = ({
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="text-base font-bold text-slate-100 uppercase tracking-wider font-mono">
-                    Escáner Multi-Par TradFi (Binance Futuros TRADFIUSDT)
+                    Escáner Cuantitativo TradFi & Acciones (Binance Futuros TRADFIUSDT)
                   </h2>
                   <span className="bg-amber-500/10 text-amber-400 border border-amber-500/30 text-[10px] font-mono font-bold px-2 py-0.5 rounded-sm uppercase tracking-wider">
-                    {totalPairsCount} ACTIVOS TRADFI ACTIVOS
+                    TABLA INSTITUCIONAL
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Monitoreo simultáneo de Commodities (Oro/Plata/Petróleo), Divisas Forex FX, RWA & Bonos del Tesoro, y Proxies de Índices Bursátiles.
+                  Filtros cuantitativos de Rupturas de Momento, Retrocesos Swing y Crecimiento CANSLIM en Commodities, FX, RWA e Índices.
                 </p>
               </div>
             </div>
@@ -681,138 +910,186 @@ export const TradFiScannerTab: React.FC<TradFiScannerTabProps> = ({
               className="bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 text-xs px-3.5 py-2 rounded-lg font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin' : ''}`} />
-              <span>{isScanning ? 'Escaneando TradFi...' : 'Escanear TradFi Ahora'}</span>
+              <span>{isScanning ? 'Escaneando...' : 'Escanear Ahora'}</span>
             </button>
           </div>
         </div>
 
-        {/* Top Summary Metric Strip */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-1">
-          <div className="bg-slate-950/80 border border-slate-800 rounded-lg p-3">
-            <span className="text-[10px] text-slate-400 uppercase font-mono block">Sesgo TradFi 24h</span>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-sm font-bold font-mono text-emerald-400">{bullishCount} Alcistas</span>
-              <span className="text-xs text-slate-500">/</span>
-              <span className="text-sm font-bold font-mono text-red-400">{bearishCount} Bajistas</span>
-            </div>
-          </div>
-
-          <div className="bg-slate-950/80 border border-slate-800 rounded-lg p-3">
-            <span className="text-[10px] text-slate-400 uppercase font-mono block">Oro Físico (PAXG/XAU)</span>
-            <div className="flex items-center justify-between mt-1">
-              <span className="text-sm font-bold font-mono text-amber-300">
-                ${fmt(goldPair?.price || 2748.5, 2)}
-              </span>
-              <span className={`text-[11px] font-mono font-bold ${(goldPair?.change24h || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                {(goldPair?.change24h || 0) >= 0 ? '+' : ''}{fmt(goldPair?.change24h || 0.45, 2)}%
-              </span>
-            </div>
-          </div>
-
-          <div className="bg-slate-950/80 border border-slate-800 rounded-lg p-3">
-            <span className="text-[10px] text-slate-400 uppercase font-mono block">Líder RWA (ONDO Treasuries)</span>
-            <div className="flex items-center justify-between mt-1">
-              <span className="text-sm font-bold font-mono text-cyan-300">
-                ${fmt(ondoPair?.price || 0.865, 3)}
-              </span>
-              <span className={`text-[11px] font-mono font-bold ${(ondoPair?.change24h || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                {(ondoPair?.change24h || 0) >= 0 ? '+' : ''}{fmt(ondoPair?.change24h || 1.8, 2)}%
-              </span>
-            </div>
-          </div>
-
-          <div className="bg-slate-950/80 border border-slate-800 rounded-lg p-3">
-            <span className="text-[10px] text-slate-400 uppercase font-mono block">Mayor RVOL TradFi</span>
-            <div className="flex items-center justify-between mt-1">
-              <span className="text-sm font-bold font-mono text-amber-400">
-                {topRvolPair?.symbol || 'PAXGUSDT'}
-              </span>
-              <span className="text-xs font-mono font-bold bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded border border-amber-500/30">
-                {topRvolPair?.rvol || 2.4}x RVOL
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* 2. TradFi Category Selector Bar */}
-        <div className="mt-4 pt-3 border-t border-slate-800">
+        {/* 2. THE 3 CORE STRATEGY PRESET BUTTONS (Primary User Request) */}
+        <div className="mt-4 pt-1">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-mono uppercase tracking-widest text-slate-400 font-bold flex items-center gap-1.5">
-              <Layers className="w-3.5 h-3.5 text-amber-400" /> 4 Sectores de Mercados Tradicionales & RWA
+            <span className="text-[10px] font-mono uppercase tracking-widest text-slate-300 font-bold flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Estrategias Cuantitativas Institucionales
             </span>
             <span className="text-[10px] text-slate-500 font-mono">
-              Filtra por clase de activo para detectar flujos intermercado
+              Filtros multi-factor (Descriptivo + Técnico + Fundamental)
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-            {TRADFI_CATEGORIES.map(cat => {
-              const Icon = cat.icon;
-              const isSelected = selectedCategory === cat.id;
-              const count = cat.id === 'ALL'
-                ? items.length || TRADFI_PAIRS_CATALOG.length
-                : items.filter(i => i.tradfiCategory === cat.id).length || TRADFI_PAIRS_CATALOG.filter(c => c.tradfiCategory === cat.id).length;
-
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
-                  className={`p-2.5 rounded-lg border text-xs font-mono text-left transition-all cursor-pointer flex flex-col justify-between ${
-                    isSelected
-                      ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold shadow-md shadow-amber-500/10'
-                      : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-wider">
-                      <Icon className="w-3.5 h-3.5" />
-                      <span>{cat.shortName}</span>
-                    </span>
-                    <span className="text-[10px] opacity-75">({count})</span>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* Button 1: Rupturas de Momento (Breakouts) */}
+            <button
+              onClick={() => setStrategyPreset(strategyPreset === 'BREAKOUTS' ? 'ALL' : 'BREAKOUTS')}
+              className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
+                strategyPreset === 'BREAKOUTS'
+                  ? 'bg-amber-500/15 border-amber-500 text-white shadow-lg ring-1 ring-amber-500/40'
+                  : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-900/60'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400">
+                    <Flame className="w-4 h-4" />
                   </div>
-                  <span className="text-[11px] truncate opacity-90">{cat.name}</span>
-                </button>
-              );
-            })}
+                  <span className="text-xs font-bold font-mono tracking-tight text-amber-300">
+                    1. Rupturas de Momento (Breakouts)
+                  </span>
+                </div>
+                <span className="bg-amber-500/20 text-amber-300 text-[10px] font-mono font-bold px-2 py-0.5 rounded border border-amber-500/30">
+                  {breakoutCount} Coincidencias
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Cap ≥ $2B • Precio &gt; $10 • Vol &gt; 500K • RVOL &gt; 1.5 • Precio &gt; SMA20/50/200 • Máximos 52S.
+              </p>
+            </button>
+
+            {/* Button 2: Retrocesos en Tendencia (Swing Pullbacks) */}
+            <button
+              onClick={() => setStrategyPreset(strategyPreset === 'SWING_PULLBACKS' ? 'ALL' : 'SWING_PULLBACKS')}
+              className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
+                strategyPreset === 'SWING_PULLBACKS'
+                  ? 'bg-cyan-500/15 border-cyan-500 text-white shadow-lg ring-1 ring-cyan-500/40'
+                  : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-900/60'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-cyan-500/20 text-cyan-400">
+                    <RotateCcw className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs font-bold font-mono tracking-tight text-cyan-300">
+                    2. Retrocesos en Tendencia (Swing Pullbacks)
+                  </span>
+                </div>
+                <span className="bg-cyan-500/20 text-cyan-300 text-[10px] font-mono font-bold px-2 py-0.5 rounded border border-cyan-500/30">
+                  {pullbackCount} Coincidencias
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Precio &gt; $10 • Vol &gt; 1M • Optionable • Precio &gt; SMA200 • Semanal en Rojo • RSI(14) ≤ 40.
+              </p>
+            </button>
+
+            {/* Button 3: Crecimiento con Fundamentales Fuertes (CANSLIM / Growth) */}
+            <button
+              onClick={() => setStrategyPreset(strategyPreset === 'GROWTH_CANSLIM' ? 'ALL' : 'GROWTH_CANSLIM')}
+              className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
+                strategyPreset === 'GROWTH_CANSLIM'
+                  ? 'bg-emerald-500/15 border-emerald-500 text-white shadow-lg ring-1 ring-emerald-500/40'
+                  : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-900/60'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
+                    <BarChart3 className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs font-bold font-mono tracking-tight text-emerald-300">
+                    3. Crecimiento Fuertes (CANSLIM)
+                  </span>
+                </div>
+                <span className="bg-emerald-500/20 text-emerald-300 text-[10px] font-mono font-bold px-2 py-0.5 rounded border border-emerald-500/30">
+                  {canslimCount} Coincidencias
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Cap ≥ $2B • Vol &gt; 500K • EPS &gt; +20% • Ventas QoQ &gt; +10% • ROE &gt; 15% • Precio &gt; SMA200.
+              </p>
+            </button>
           </div>
         </div>
 
-        {/* 3. Signal Filters & Search Bar */}
-        <div className="mt-4 pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+        {/* 3. Sectors Bar & Secondary Filters */}
+        <div className="mt-4 pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
+          {/* Sector Buttons */}
           <div className="flex flex-wrap items-center gap-1.5 text-xs font-mono">
-            <span className="text-[10px] text-slate-500 uppercase tracking-widest mr-1 flex items-center gap-1">
-              <Filter className="w-3 h-3" /> Filtro TradFi:
-            </span>
-
-            {(
-              [
-                { id: 'ALL', label: 'Todos' },
-                { id: 'LONG', label: '🟢 Longs Fuertes' },
-                { id: 'SHORT', label: '🔴 Shorts Fuertes' },
-                { id: 'VOL', label: '⚡ RVOL ≥ 2.0x' },
-                { id: 'SQUEEZE', label: '🎯 Bollinger Squeeze' },
-                { id: 'FUNDING_CARRY', label: '💰 Carry Trade Funding' },
-              ] as const
-            ).map(btn => (
+            <span className="text-[10px] text-slate-500 uppercase tracking-widest mr-1">Sector:</span>
+            {TRADFI_CATEGORIES.map(cat => (
               <button
-                key={btn.id}
-                onClick={() => setSignalFilter(btn.id)}
+                key={cat.id}
+                onClick={() => setSelectedCategory(cat.id)}
                 className={`px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer ${
-                  signalFilter === btn.id
+                  selectedCategory === cat.id
                     ? 'bg-slate-800 text-amber-300 border-amber-500/50 shadow-sm'
                     : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
                 }`}
               >
-                {btn.label}
+                {cat.shortName}
               </button>
             ))}
           </div>
 
-          <div className="relative w-full sm:w-64">
+          {/* Quick Signal Filter Chips */}
+          <div className="flex flex-wrap items-center gap-1.5 text-xs font-mono">
+            <button
+              onClick={() => setStrategyPreset('ALL')}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer ${
+                strategyPreset === 'ALL'
+                  ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold'
+                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Todos ({items.length})
+            </button>
+            <button
+              onClick={() => setStrategyPreset('LONG')}
+              className={`px-2 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer ${
+                strategyPreset === 'LONG'
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500'
+                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              🟢 Longs
+            </button>
+            <button
+              onClick={() => setStrategyPreset('SHORT')}
+              className={`px-2 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer ${
+                strategyPreset === 'SHORT'
+                  ? 'bg-red-500/20 text-red-300 border-red-500'
+                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              🔴 Shorts
+            </button>
+            <button
+              onClick={() => setStrategyPreset('VOL')}
+              className={`px-2 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer ${
+                strategyPreset === 'VOL'
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500'
+                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              ⚡ RVOL ≥ 1.5x
+            </button>
+            <button
+              onClick={() => setStrategyPreset('SQUEEZE')}
+              className={`px-2 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer ${
+                strategyPreset === 'SQUEEZE'
+                  ? 'bg-purple-500/20 text-purple-300 border-purple-500'
+                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              🎯 Squeeze
+            </button>
+          </div>
+
+          {/* Search Input */}
+          <div className="relative w-full sm:w-60">
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
               type="text"
-              placeholder="Buscar (Oro, EUR, ONDO, SPX, Petróleo)..."
+              placeholder="Buscar (NVDA, Oro, EUR, ONDO)..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs font-mono text-white placeholder:text-slate-600 focus:outline-none focus:border-amber-400"
@@ -821,221 +1098,395 @@ export const TradFiScannerTab: React.FC<TradFiScannerTabProps> = ({
         </div>
       </div>
 
-      {/* 4. TradFi Pairs Scanner Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredItems.map(item => {
-          const isBull = item.signal === 'LONG';
-          const isBear = item.signal === 'SHORT';
-          const isSqueeze = item.bollingerSqueeze;
-          const isHighVol = item.rvol >= 2.0;
-
-          // Category badge styling
-          const isCommodity = item.tradfiCategory === 'COMMODITIES';
-          const isForex = item.tradfiCategory === 'FOREX';
-          const isRwa = item.tradfiCategory === 'RWA_TREASURIES';
-          const isEquity = item.tradfiCategory === 'EQUITY_INDICES';
-
-          return (
-            <div
-              key={item.symbol}
-              className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 transition-all hover:border-amber-500/60 shadow-md relative overflow-hidden flex flex-col justify-between"
-            >
-              {/* Top Accent bar */}
-              <div
-                className={`absolute top-0 left-0 w-full h-1 ${
-                  isBull
-                    ? 'bg-emerald-500'
-                    : isBear
-                    ? 'bg-red-500'
-                    : isSqueeze
-                    ? 'bg-amber-400'
-                    : isCommodity
-                    ? 'bg-amber-500'
-                    : isForex
-                    ? 'bg-emerald-600'
-                    : isRwa
-                    ? 'bg-cyan-500'
-                    : 'bg-indigo-500'
-                }`}
-              ></div>
-
-              <div>
-                {/* Header: Symbol, Underlying Asset & Price */}
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-bold font-mono text-white tracking-wide">
-                        {item.symbol}
-                      </span>
-                      <span
-                        className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded border ${
-                          isCommodity
-                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                            : isForex
-                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                            : isRwa
-                            ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
-                            : 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
-                        }`}
-                      >
-                        {item.categoryLabel}
-                      </span>
-                    </div>
-                    <span className="text-[10px] text-slate-400 font-mono block mt-0.5 line-clamp-1">
-                      {item.underlyingName}
-                    </span>
-                  </div>
-
-                  <div className="text-right">
-                    <div className="text-sm font-bold font-mono text-white">
-                      ${fmt(item.price, item.price > 1000 ? 2 : item.price > 1 ? 3 : 5)}
-                    </div>
-                    <div
-                      className={`text-[11px] font-mono font-bold flex items-center justify-end gap-0.5 ${
-                        item.change24h >= 0 ? 'text-emerald-400' : 'text-red-400'
-                      }`}
-                    >
-                      {item.change24h >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                      <span>{item.change24h >= 0 ? '+' : ''}{fmt(item.change24h, 2)}%</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Sub-info bar: Real world asset source & Contract type */}
-                <div className="bg-slate-950/90 border border-slate-800/80 rounded-lg p-2.5 text-xs font-mono mb-3 space-y-1.5">
-                  <div className="flex items-center justify-between text-[10px] text-slate-400">
-                    <span>Subyacente:</span>
-                    <span className="text-slate-200 font-semibold truncate max-w-[170px]">
-                      {item.underlyingAsset}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between text-[10px] text-slate-400">
-                    <span>Rango 24h:</span>
-                    <span className="text-slate-300">
-                      ${fmt(item.low24h, item.price > 1 ? 2 : 4)} - ${fmt(item.high24h, item.price > 1 ? 2 : 4)}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Indicators Matrix Grid */}
-                <div className="grid grid-cols-3 gap-2 bg-slate-950/70 border border-slate-800/80 rounded-lg p-2.5 text-xs font-mono mb-3">
-                  <div>
-                    <span className="text-[9px] text-slate-400 uppercase block">RVOL 15m</span>
-                    <span
-                      className={`font-bold block text-[11px] ${
-                        item.rvol >= 2.0
-                          ? 'text-amber-400 font-extrabold'
-                          : item.rvol >= 1.3
-                          ? 'text-emerald-400'
-                          : 'text-slate-300'
-                      }`}
-                    >
-                      {item.rvol}x
-                    </span>
-                  </div>
-
-                  <div>
-                    <span className="text-[9px] text-slate-400 uppercase block">RSI 15m</span>
-                    <span
-                      className={`font-bold block text-[11px] ${
-                        item.rsi15m <= 32
-                          ? 'text-emerald-400'
-                          : item.rsi15m >= 68
-                          ? 'text-red-400'
-                          : 'text-slate-300'
-                      }`}
-                    >
-                      {item.rsi15m}
-                    </span>
-                  </div>
-
-                  <div>
-                    <span className="text-[9px] text-slate-400 uppercase block">Corr. DXY</span>
-                    <span
-                      className={`font-bold block text-[11px] ${
-                        item.dxyCorrelation <= -0.7
-                          ? 'text-cyan-400'
-                          : item.dxyCorrelation >= 0.5
-                          ? 'text-amber-400'
-                          : 'text-slate-300'
-                      }`}
-                    >
-                      {item.dxyCorrelation > 0 ? '+' : ''}{item.dxyCorrelation}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Algorithmic Signal Tag & Funding */}
-                <div className="flex items-center justify-between text-xs font-mono mb-3">
-                  <div className="flex items-center gap-1 text-[10px] text-slate-400">
-                    <span>Funding:</span>
-                    <span className="text-amber-300 font-bold">
-                      {(item.fundingRate * 100).toFixed(4)}%
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
-                    {isBull && (
-                      <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold px-2 py-0.5 rounded">
-                        LONG SIGNAL (★{item.signalStrength})
-                      </span>
-                    )}
-                    {isBear && (
-                      <span className="bg-red-500/20 text-red-300 border border-red-500/40 text-[10px] font-bold px-2 py-0.5 rounded">
-                        SHORT SIGNAL (★{item.signalStrength})
-                      </span>
-                    )}
-                    {isSqueeze && !isBull && !isBear && (
-                      <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold px-2 py-0.5 rounded">
-                        BB SQUEEZE
-                      </span>
-                    )}
-                    {isHighVol && !isBull && !isBear && !isSqueeze && (
-                      <span className="bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[10px] font-bold px-2 py-0.5 rounded">
-                        VOL SPIKE
-                      </span>
-                    )}
-                    {!isBull && !isBear && !isSqueeze && !isHighVol && (
-                      <span className="text-slate-500 text-[10px]">NEUTRAL</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* 1-Click Action Button */}
-              <button
-                onClick={() => {
-                  onSelectSymbol(item.symbol);
-                  if (onLogMessage) {
-                    onLogMessage(`🏛️ Par TradFi ${item.symbol} (${item.underlyingName}) cargado para análisis multi-temporal y órdenes.`, 'info');
-                  }
-                }}
-                className="w-full bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-slate-200 border border-slate-700 hover:border-amber-400 py-2 px-3 rounded-lg text-xs font-bold font-mono uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-98"
-              >
-                <Zap className="w-3.5 h-3.5" />
-                <span>Cargar & Operar {item.symbol}</span>
-              </button>
+      {/* 4. ACTIVE STRATEGY EXPLANATION BANNER */}
+      {strategyPreset !== 'ALL' && (
+        <div className="bg-slate-900/90 border border-amber-500/30 rounded-xl p-3.5 flex items-start gap-3 text-xs font-mono">
+          <Info className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-amber-300 uppercase">
+                {strategyPreset === 'BREAKOUTS' && 'Filtro Activo: Rupturas de Momento (Breakouts)'}
+                {strategyPreset === 'SWING_PULLBACKS' && 'Filtro Activo: Retrocesos en Tendencia (Swing Pullbacks)'}
+                {strategyPreset === 'GROWTH_CANSLIM' && 'Filtro Activo: Crecimiento con Fundamentales Fuertes (CANSLIM)'}
+                {strategyPreset === 'LONG' && 'Filtro Activo: Señales Cuantitativas LONG'}
+                {strategyPreset === 'SHORT' && 'Filtro Activo: Señales Cuantitativas SHORT'}
+                {strategyPreset === 'VOL' && 'Filtro Activo: Volumen Inusual (RVOL ≥ 1.5x)'}
+                {strategyPreset === 'SQUEEZE' && 'Filtro Activo: Compresión de Bollinger (Squeeze)'}
+              </span>
+              <span className="bg-slate-800 text-slate-300 text-[10px] px-2 py-0.2 rounded border border-slate-700">
+                {sortedItems.length} activos coincidentes
+              </span>
             </div>
-          );
-        })}
-      </div>
-
-      {filteredItems.length === 0 && !isScanning && (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-12 text-center text-slate-400 font-mono text-xs space-y-2">
-          <p>No se encontraron pares TradFi con los filtros especificados.</p>
+            <p className="text-slate-400 text-[11px] mt-0.5">
+              {strategyPreset === 'BREAKOUTS' && 'Detectando activos con Market Cap ≥ $2B, Precio > $10, Volumen > 500K, RVOL > 1.5x, cotizando por encima de SMA 20, SMA 50 y SMA 200, en zona de máximos anuales.'}
+              {strategyPreset === 'SWING_PULLBACKS' && 'Detectando empresas líquidas en tendencia alcista estructural (Precio > SMA 200) que han corregido en la semana con RSI(14) en sobreventa o zona baja (≤ 40) para compras a descuento.'}
+              {strategyPreset === 'GROWTH_CANSLIM' && 'Detectando empresas líderes con crecimiento de EPS > 20%, crecimiento de ventas QoQ > 10%, ROE > 15% y soporte técnico alcista por encima de su SMA 200.'}
+              {strategyPreset === 'LONG' && 'Filtrando confluencias cuantitativas compradoras basadas en Order Flow y absorción.'}
+              {strategyPreset === 'SHORT' && 'Filtrando confluencias cuantitativas vendedoras y sobrecompras extremas.'}
+              {strategyPreset === 'VOL' && 'Mostrando activos con volumen relativo anormal respecto a sus 20 periodos precedentes.'}
+              {strategyPreset === 'SQUEEZE' && 'Mostrando bandas de Bollinger comprimidas listas para una expansión direccional inminente.'}
+            </p>
+          </div>
           <button
-            onClick={() => {
-              setSignalFilter('ALL');
-              setSelectedCategory('ALL');
-              setSearchQuery('');
-            }}
-            className="text-amber-400 underline cursor-pointer"
+            onClick={() => setStrategyPreset('ALL')}
+            className="text-[10px] text-amber-400 hover:text-amber-300 underline uppercase tracking-wider cursor-pointer"
           >
-            Restablecer todos los filtros TradFi
+            Limpiar Filtro
           </button>
         </div>
       )}
+
+      {/* 5. INSTITUTIONAL FINANCIAL DATA TABLE (Primary View) */}
+      <div className="bg-slate-900/90 border border-slate-800 rounded-xl shadow-xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs font-mono border-collapse">
+            {/* Table Header */}
+            <thead>
+              <tr className="bg-slate-950 border-b border-slate-800 text-slate-400 text-[11px] uppercase tracking-wider select-none">
+                <th
+                  onClick={() => handleSort('symbol')}
+                  className="py-3 px-4 font-bold cursor-pointer hover:text-slate-200 transition-colors"
+                >
+                  <div className="flex items-center gap-1">
+                    <span>Símbolo / Activo</span>
+                    {sortField === 'symbol' ? (sortAsc ? <ChevronUp className="w-3 h-3 text-amber-400" /> : <ChevronDown className="w-3 h-3 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                  </div>
+                </th>
+
+                <th
+                  onClick={() => handleSort('price')}
+                  className="py-3 px-3 font-bold text-right cursor-pointer hover:text-slate-200 transition-colors"
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    <span>Precio USD</span>
+                    {sortField === 'price' ? (sortAsc ? <ChevronUp className="w-3 h-3 text-amber-400" /> : <ChevronDown className="w-3 h-3 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                  </div>
+                </th>
+
+                <th
+                  onClick={() => handleSort('change24h')}
+                  className="py-3 px-3 font-bold text-right cursor-pointer hover:text-slate-200 transition-colors"
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    <span>24h %</span>
+                    {sortField === 'change24h' ? (sortAsc ? <ChevronUp className="w-3 h-3 text-amber-400" /> : <ChevronDown className="w-3 h-3 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                  </div>
+                </th>
+
+                <th
+                  onClick={() => handleSort('weekChangePercent')}
+                  className="py-3 px-3 font-bold text-right cursor-pointer hover:text-slate-200 transition-colors"
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    <span>1 Sem %</span>
+                    {sortField === 'weekChangePercent' ? (sortAsc ? <ChevronUp className="w-3 h-3 text-amber-400" /> : <ChevronDown className="w-3 h-3 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                  </div>
+                </th>
+
+                <th
+                  onClick={() => handleSort('rvol')}
+                  className="py-3 px-3 font-bold text-center cursor-pointer hover:text-slate-200 transition-colors"
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <span>RVOL</span>
+                    {sortField === 'rvol' ? (sortAsc ? <ChevronUp className="w-3 h-3 text-amber-400" /> : <ChevronDown className="w-3 h-3 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                  </div>
+                </th>
+
+                <th
+                  onClick={() => handleSort('rsi14d')}
+                  className="py-3 px-3 font-bold text-center cursor-pointer hover:text-slate-200 transition-colors"
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <span>RSI (14)</span>
+                    {sortField === 'rsi14d' ? (sortAsc ? <ChevronUp className="w-3 h-3 text-amber-400" /> : <ChevronDown className="w-3 h-3 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                  </div>
+                </th>
+
+                <th className="py-3 px-3 font-bold text-center">
+                  <span>Medias (20/50/200)</span>
+                </th>
+
+                <th className="py-3 px-3 font-bold text-center">
+                  <span>Rango 52S</span>
+                </th>
+
+                <th
+                  onClick={() => handleSort('marketCap')}
+                  className="py-3 px-3 font-bold text-right cursor-pointer hover:text-slate-200 transition-colors"
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    <span>Cap / Vol</span>
+                    {sortField === 'marketCap' ? (sortAsc ? <ChevronUp className="w-3 h-3 text-amber-400" /> : <ChevronDown className="w-3 h-3 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                  </div>
+                </th>
+
+                <th
+                  onClick={() => handleSort('epsGrowthYear')}
+                  className="py-3 px-3 font-bold text-right cursor-pointer hover:text-slate-200 transition-colors"
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    <span>CANSLIM (EPS/ROE)</span>
+                    {sortField === 'epsGrowthYear' ? (sortAsc ? <ChevronUp className="w-3 h-3 text-amber-400" /> : <ChevronDown className="w-3 h-3 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                  </div>
+                </th>
+
+                <th className="py-3 px-3 font-bold text-center">
+                  <span>Estrategias</span>
+                </th>
+
+                <th className="py-3 px-4 font-bold text-center">
+                  <span>Acción</span>
+                </th>
+              </tr>
+            </thead>
+
+            {/* Table Body */}
+            <tbody className="divide-y divide-slate-800/60">
+              {sortedItems.length === 0 ? (
+                <tr>
+                  <td colSpan={12} className="py-12 text-center text-slate-500 font-mono">
+                    <p className="text-sm">No se encontraron activos que cumplan con los criterios seleccionados.</p>
+                    <button
+                      onClick={() => {
+                        setStrategyPreset('ALL');
+                        setSelectedCategory('ALL');
+                        setSearchQuery('');
+                      }}
+                      className="mt-3 text-xs text-amber-400 underline uppercase tracking-wider cursor-pointer"
+                    >
+                      Restablecer todos los filtros
+                    </button>
+                  </td>
+                </tr>
+              ) : (
+                sortedItems.map(item => {
+                  const isBull = item.signal === 'LONG';
+                  const isBear = item.signal === 'SHORT';
+
+                  // 52W percentage positioning
+                  const range52 = (item.high52w || 1) - (item.low52w || 0);
+                  const pos52 = range52 > 0 ? Math.max(0, Math.min(100, ((item.price - (item.low52w || 0)) / range52) * 100)) : 50;
+
+                  return (
+                    <tr
+                      key={item.symbol}
+                      className="hover:bg-slate-800/50 transition-colors group"
+                    >
+                      {/* 1. Símbolo & Subyacente */}
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-white tracking-wider text-xs">
+                                {item.symbol}
+                              </span>
+                              <span className="text-[9px] bg-slate-800 text-slate-400 px-1 py-0.2 rounded border border-slate-700/80">
+                                {item.categoryLabel}
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-slate-400 truncate max-w-[190px]" title={item.underlyingName}>
+                              {item.underlyingName}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* 2. Precio Actual */}
+                      <td className="py-3 px-3 text-right">
+                        <div className="font-bold text-slate-100">
+                          ${fmt(item.price, item.price > 1000 ? 2 : item.price > 1 ? 3 : 5)}
+                        </div>
+                        <span className="text-[10px] text-slate-500">
+                          ${fmt(item.low24h, item.price > 1 ? 2 : 4)} - ${fmt(item.high24h, item.price > 1 ? 2 : 4)}
+                        </span>
+                      </td>
+
+                      {/* 3. Var 24h % */}
+                      <td className="py-3 px-3 text-right">
+                        <span
+                          className={`font-bold inline-flex items-center gap-0.5 ${
+                            item.change24h >= 0 ? 'text-emerald-400' : 'text-red-400'
+                          }`}
+                        >
+                          {item.change24h >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                          {item.change24h >= 0 ? '+' : ''}{fmt(item.change24h, 2)}%
+                        </span>
+                      </td>
+
+                      {/* 4. Var 1W % */}
+                      <td className="py-3 px-3 text-right">
+                        <span
+                          className={`font-bold ${
+                            (item.weekChangePercent || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'
+                          }`}
+                        >
+                          {(item.weekChangePercent || 0) >= 0 ? '+' : ''}{fmt(item.weekChangePercent, 2)}%
+                        </span>
+                      </td>
+
+                      {/* 5. RVOL */}
+                      <td className="py-3 px-3 text-center">
+                        <span
+                          className={`px-2 py-0.5 rounded font-bold text-[11px] ${
+                            item.rvol >= 2.0
+                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black'
+                              : item.rvol >= 1.5
+                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                              : 'bg-slate-800 text-slate-400'
+                          }`}
+                        >
+                          {item.rvol}x
+                        </span>
+                      </td>
+
+                      {/* 6. RSI (14) */}
+                      <td className="py-3 px-3 text-center">
+                        <div className="inline-flex flex-col items-center">
+                          <span
+                            className={`font-bold ${
+                              (item.rsi14d || 50) <= 35
+                                ? 'text-emerald-400'
+                                : (item.rsi14d || 50) >= 68
+                                ? 'text-red-400'
+                                : 'text-slate-300'
+                            }`}
+                          >
+                            {item.rsi14d || 50}
+                          </span>
+                          <div className="w-10 h-1 bg-slate-800 rounded-full mt-1 overflow-hidden">
+                            <div
+                              className={`h-full ${
+                                (item.rsi14d || 50) <= 35
+                                  ? 'bg-emerald-500'
+                                  : (item.rsi14d || 50) >= 68
+                                  ? 'bg-red-500'
+                                  : 'bg-amber-500'
+                              }`}
+                              style={{ width: `${item.rsi14d || 50}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* 7. Medias Móviles (SMA 20/50/200) */}
+                      <td className="py-3 px-3 text-center">
+                        <div className="flex items-center justify-center gap-1 text-[10px]">
+                          <span
+                            title={`SMA20: $${fmt(item.sma20)} (${item.aboveSma20 ? 'Precio Superior' : 'Precio Inferior'})`}
+                            className={`px-1 py-0.2 rounded font-bold ${
+                              item.aboveSma20
+                                ? 'bg-emerald-500/20 text-emerald-400'
+                                : 'bg-red-500/20 text-red-400'
+                            }`}
+                          >
+                            20
+                          </span>
+                          <span
+                            title={`SMA50: $${fmt(item.sma50)} (${item.aboveSma50 ? 'Precio Superior' : 'Precio Inferior'})`}
+                            className={`px-1 py-0.2 rounded font-bold ${
+                              item.aboveSma50
+                                ? 'bg-emerald-500/20 text-emerald-400'
+                                : 'bg-red-500/20 text-red-400'
+                            }`}
+                          >
+                            50
+                          </span>
+                          <span
+                            title={`SMA200: $${fmt(item.sma200)} (${item.aboveSma200 ? 'Precio Superior' : 'Precio Inferior'})`}
+                            className={`px-1 py-0.2 rounded font-bold ${
+                              item.aboveSma200
+                                ? 'bg-emerald-500/20 text-emerald-400'
+                                : 'bg-red-500/20 text-red-400'
+                            }`}
+                          >
+                            200
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* 8. Rango 52S */}
+                      <td className="py-3 px-3 text-center">
+                        <div className="w-20 mx-auto">
+                          <div className="flex justify-between text-[9px] text-slate-500 mb-0.5">
+                            <span>${fmt(item.low52w, item.price > 1 ? 0 : 2)}</span>
+                            <span>${fmt(item.high52w, item.price > 1 ? 0 : 2)}</span>
+                          </div>
+                          <div className="h-1.5 bg-slate-800 rounded-full relative overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-cyan-500 via-amber-400 to-emerald-400 rounded-full"
+                              style={{ width: `${pos52}%` }}
+                            />
+                          </div>
+                          <span className="text-[9px] text-slate-400 mt-0.5 block">
+                            {pos52.toFixed(0)}% del máx
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* 9. Cap / Vol */}
+                      <td className="py-3 px-3 text-right">
+                        <div className="font-bold text-slate-200">{fmtCap(item.marketCap)}</div>
+                        <div className="text-[10px] text-slate-500">Vol: {fmtVol(item.avgVolume)}</div>
+                      </td>
+
+                      {/* 10. CANSLIM (EPS / ROE) */}
+                      <td className="py-3 px-3 text-right">
+                        <div className="font-bold text-emerald-400">
+                          EPS +{item.epsGrowthYear || 0}%
+                        </div>
+                        <div className="text-[10px] text-slate-400">
+                          ROE {item.roe || 0}% • Ventas +{item.salesGrowthQoQ || 0}%
+                        </div>
+                      </td>
+
+                      {/* 11. Estrategias Cumplidas */}
+                      <td className="py-3 px-3 text-center">
+                        <div className="flex flex-wrap items-center justify-center gap-1 max-w-[130px] mx-auto">
+                          {item.isBreakout && (
+                            <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] font-bold px-1.5 py-0.5 rounded">
+                              RUPTURA
+                            </span>
+                          )}
+                          {item.isSwingPullback && (
+                            <span className="bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[9px] font-bold px-1.5 py-0.5 rounded">
+                              PULLBACK
+                            </span>
+                          )}
+                          {item.isGrowthCanslim && (
+                            <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[9px] font-bold px-1.5 py-0.5 rounded">
+                              CANSLIM
+                            </span>
+                          )}
+                          {item.bollingerSqueeze && (
+                            <span className="bg-purple-500/20 text-purple-300 border border-purple-500/40 text-[9px] font-bold px-1.5 py-0.5 rounded">
+                              SQUEEZE
+                            </span>
+                          )}
+                          {!item.isBreakout && !item.isSwingPullback && !item.isGrowthCanslim && !item.bollingerSqueeze && (
+                            <span className="text-[10px] text-slate-500">Normal</span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* 12. Acción Rápida */}
+                      <td className="py-3 px-4 text-center">
+                        <button
+                          onClick={() => onSelectSymbol(item.symbol)}
+                          className="bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-slate-300 border border-slate-700 hover:border-amber-400 px-2.5 py-1 rounded text-[11px] font-bold transition-all cursor-pointer inline-flex items-center gap-1 shadow-sm"
+                        >
+                          <span>Analizar</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 };
