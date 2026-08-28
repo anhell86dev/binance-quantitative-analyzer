@@ -1,0 +1,484 @@
+import React, { useState } from 'react';
+import { BinanceDashboardData } from '../types';
+import { RefreshCw, Wallet, ShieldCheck, ArrowDownRight, ArrowUpRight, Key, AlertTriangle, CheckCircle } from 'lucide-react';
+
+interface BinanceWalletTabProps {
+  data: BinanceDashboardData | null;
+  isLoading: boolean;
+  onSync: () => void;
+  apiConfigured: boolean;
+  onSaveCustomKeys?: (key: string, secret: string) => void;
+}
+
+export const BinanceWalletTab: React.FC<BinanceWalletTabProps> = ({
+  data,
+  isLoading,
+  onSync,
+  apiConfigured,
+  onSaveCustomKeys,
+}) => {
+  const [showKeyModal, setShowKeyModal] = useState(false);
+  const [customKey, setCustomKey] = useState('');
+  const [customSecret, setCustomSecret] = useState('');
+
+  const fmt = (v: number | string | undefined) => {
+    const n = typeof v === 'string' ? parseFloat(v) : v;
+    return n !== undefined && !isNaN(n) ? n.toFixed(2) : '0.00';
+  };
+
+  const futures = data?.futuresAcc;
+  const marginBalance = parseFloat(futures?.totalMarginBalance || '0');
+  const maintMargin = parseFloat(futures?.totalMaintMargin || '0');
+  const marginRatio = marginBalance > 0 ? (maintMargin / marginBalance) * 100 : 0;
+
+  const riskColor =
+    marginRatio > 80 ? 'text-red-400 border-red-500' : marginRatio > 50 ? 'text-amber-400 border-amber-500' : 'text-slate-200 border-slate-700';
+
+  const handleSaveKeys = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (onSaveCustomKeys) {
+      onSaveCustomKeys(customKey.trim(), customSecret.trim());
+      setShowKeyModal(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Configuration notice if keys are missing */}
+      {!apiConfigured && (
+        <div className="bg-slate-900 border border-amber-500/30 rounded-xl p-4 flex flex-wrap justify-between items-center gap-3 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-0.5 bg-amber-500"></div>
+          <div className="flex items-center gap-2.5 text-xs text-slate-300">
+            <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0" />
+            <div>
+              <p className="font-semibold text-amber-400 m-0 uppercase tracking-wide text-xs">
+                API Keys de Binance no detectadas en el servidor
+              </p>
+              <p className="text-slate-400 m-0 text-[11px] mt-0.5">
+                Para sincronizar tu billetera y enviar órdenes reales, configura <code className="bg-slate-950 text-amber-300 border border-slate-800 px-1.5 py-0.5 rounded font-mono">BINANCE_API_KEY</code> y <code className="bg-slate-950 text-amber-300 border border-slate-800 px-1.5 py-0.5 rounded font-mono">BINANCE_API_SECRET</code> en los Secretos de AI Studio o ingresa tus claves abajo.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowKeyModal(true)}
+            className="bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer shadow-sm transition-colors uppercase tracking-wider"
+          >
+            <Key className="w-3.5 h-3.5" /> Configurar Claves
+          </button>
+        </div>
+      )}
+
+      {/* Summary Risk & Margins Panel */}
+      <section className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-amber-500 via-amber-500/40 to-transparent"></div>
+
+        <div className="flex flex-wrap justify-between items-center gap-3 mb-5 pb-3 border-b border-slate-800">
+          <div className="flex items-center gap-2">
+            <Wallet className="w-4 h-4 text-amber-400" />
+            <h2 className="text-xs uppercase tracking-widest text-slate-400 font-bold m-0">
+              Resumen de Riesgo y Margen (Binance Futures)
+            </h2>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowKeyModal(true)}
+              className="bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer transition-colors font-mono"
+            >
+              <Key className="w-3.5 h-3.5" /> Claves API
+            </button>
+            <button
+              onClick={onSync}
+              disabled={isLoading}
+              className="bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 text-xs font-bold uppercase tracking-wider px-4 py-1.5 rounded-lg flex items-center gap-2 cursor-pointer transition-colors shadow-sm"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+              {isLoading ? 'Sincronizando...' : 'Sincronizar Billetera'}
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+          {/* Total Wallet */}
+          <div className="bg-slate-950/70 border border-slate-800 rounded-lg p-4 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-0.5 bg-slate-700"></div>
+            <small className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+              Total Billetera Futuros
+            </small>
+            <strong className="text-xl font-bold font-mono text-white mt-1.5 block tracking-tight">
+              {fmt(futures?.totalWalletBalance)}{' '}
+              <span className="text-xs text-slate-400 font-sans">USDT</span>
+            </strong>
+          </div>
+
+          {/* Floating PnL */}
+          <div className="bg-slate-950/70 border border-slate-800 rounded-lg p-4 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-0.5 bg-emerald-500"></div>
+            <small className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+              PnL Flotante (No Realizado)
+            </small>
+            <strong
+              className={`text-xl font-bold font-mono mt-1.5 block tracking-tight ${
+                parseFloat(futures?.totalUnrealizedProfit || '0') >= 0
+                  ? 'text-emerald-400'
+                  : 'text-red-400'
+              }`}
+            >
+              {parseFloat(futures?.totalUnrealizedProfit || '0') >= 0 ? '+' : ''}
+              {fmt(futures?.totalUnrealizedProfit)}{' '}
+              <span className="text-xs text-slate-400 font-sans">USDT</span>
+            </strong>
+          </div>
+
+          {/* Available Margin */}
+          <div className="bg-slate-950/70 border border-slate-800 rounded-lg p-4 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-0.5 bg-amber-500"></div>
+            <small className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+              Margen Disponible
+            </small>
+            <strong className="text-xl font-bold font-mono text-white mt-1.5 block tracking-tight">
+              {fmt(futures?.availableBalance)}{' '}
+              <span className="text-xs text-slate-400 font-sans">USDT</span>
+            </strong>
+          </div>
+
+          {/* Risk Ratio */}
+          <div className="bg-slate-950/70 border border-slate-800 rounded-lg p-4 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-0.5 bg-slate-700"></div>
+            <small className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+              Ratio de Riesgo de Margen
+            </small>
+            <strong className={`text-xl font-bold font-mono mt-1.5 block tracking-tight ${riskColor}`}>
+              {marginRatio.toFixed(2)}%
+            </strong>
+          </div>
+        </div>
+      </section>
+
+      {/* Open Positions Table */}
+      <section className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-sm overflow-x-auto relative overflow-hidden">
+        <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-800">
+          <h2 className="text-xs uppercase tracking-widest text-slate-400 font-bold flex items-center gap-2 m-0">
+            <span className="w-2 h-2 bg-amber-500 rounded-sm rotate-45 inline-block"></span>
+            Posiciones Abiertas (Futuros)
+          </h2>
+        </div>
+        <table className="w-full border-collapse text-xs whitespace-nowrap">
+          <thead>
+            <tr className="text-slate-400 text-left bg-slate-950/80 border-b border-slate-800 font-mono text-[11px] uppercase tracking-wider">
+              <th className="py-2.5 px-3.5 font-bold text-slate-300 rounded-l-lg">Símbolo</th>
+              <th className="py-2.5 px-3.5 font-bold">Lado</th>
+              <th className="py-2.5 px-3.5 font-bold">Tamaño</th>
+              <th className="py-2.5 px-3.5 font-bold">Precio Entrada</th>
+              <th className="py-2.5 px-3.5 font-bold">Mark Price</th>
+              <th className="py-2.5 px-3.5 font-bold">Precio Liq.</th>
+              <th className="py-2.5 px-3.5 font-bold">Margen Inicial</th>
+              <th className="py-2.5 px-3.5 font-bold rounded-r-lg">PnL No Realizado</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-800/80 font-mono">
+            {futures?.positions &&
+            futures.positions.filter(p => parseFloat(p.positionAmt) !== 0).length > 0 ? (
+              futures.positions
+                .filter(p => parseFloat(p.positionAmt) !== 0)
+                .map((p, idx) => {
+                  const amt = parseFloat(p.positionAmt);
+                  const isLong = amt > 0;
+                  const pnl = parseFloat(p.unrealizedProfit);
+                  const liq = parseFloat(p.liquidationPrice);
+
+                  return (
+                    <tr key={idx} className="hover:bg-slate-800/40 transition-colors">
+                      <td className="py-3 px-3.5">
+                        <strong className="text-white">{p.symbol}</strong>
+                        <span className="ml-1.5 text-[10px] text-amber-400 bg-slate-950 border border-slate-800 px-1.5 py-0.5 rounded">
+                          {p.leverage}x
+                        </span>
+                      </td>
+                      <td className="py-3 px-3.5">
+                        <span
+                          className={`px-2 py-0.5 rounded-sm text-[11px] font-bold ${
+                            isLong
+                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                              : 'bg-red-500/10 text-red-400 border border-red-500/30'
+                          }`}
+                        >
+                          {isLong ? 'LONG' : 'SHORT'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3.5 text-white">{Math.abs(amt)}</td>
+                      <td className="py-3 px-3.5 text-slate-300">{fmt(p.entryPrice)}</td>
+                      <td className="py-3 px-3.5 text-slate-100">{fmt(p.markPrice)}</td>
+                      <td className="py-3 px-3.5 text-amber-400">{liq > 0 ? fmt(liq) : '---'}</td>
+                      <td className="py-3 px-3.5 text-slate-300">{fmt(p.initialMargin)}</td>
+                      <td
+                        className={`py-3 px-3.5 font-bold ${
+                          pnl >= 0 ? 'text-emerald-400' : 'text-red-400'
+                        }`}
+                      >
+                        {pnl > 0 ? '+' : ''}
+                        {fmt(pnl)} USDT
+                      </td>
+                    </tr>
+                  );
+                })
+            ) : (
+              <tr>
+                <td colSpan={8} className="py-6 text-center text-slate-500 font-sans">
+                  No hay posiciones abiertas en este momento.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </section>
+
+      {/* Available Balances Table (Spot & Futures) */}
+      <section className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-sm overflow-x-auto relative overflow-hidden">
+        <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-800">
+          <h2 className="text-xs uppercase tracking-widest text-slate-400 font-bold flex items-center gap-2 m-0">
+            <span className="w-2 h-2 bg-amber-500 rounded-sm rotate-45 inline-block"></span>
+            Balances Disponibles (Spot & Futuros USD-M)
+          </h2>
+        </div>
+        <table className="w-full border-collapse text-xs whitespace-nowrap">
+          <thead>
+            <tr className="text-slate-400 text-left bg-slate-950/80 border-b border-slate-800 font-mono text-[11px] uppercase tracking-wider">
+              <th className="py-2.5 px-3.5 font-bold text-slate-300 rounded-l-lg">Criptomoneda</th>
+              <th className="py-2.5 px-3.5 font-bold">Billetera</th>
+              <th className="py-2.5 px-3.5 font-bold">Disponible (Libre)</th>
+              <th className="py-2.5 px-3.5 font-bold">Bloqueado</th>
+              <th className="py-2.5 px-3.5 font-bold rounded-r-lg">Balance Total</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-800/80 font-mono">
+            {/* Futures Assets */}
+            {futures?.assets &&
+              futures.assets
+                .filter(a => parseFloat(a.walletBalance) > 0.0001)
+                .map((a, idx) => {
+                  const total = parseFloat(a.walletBalance);
+                  const free = parseFloat(a.availableBalance);
+                  const locked = total - free;
+                  return (
+                    <tr key={`fut_${idx}`} className="hover:bg-slate-800/40 transition-colors">
+                      <td className="py-3 px-3.5 font-bold text-white">{a.asset}</td>
+                      <td className="py-3 px-3.5 font-sans">
+                        <span className="bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-sm text-[11px] font-mono">
+                          Futuros USD-M
+                        </span>
+                      </td>
+                      <td className="py-3 px-3.5 text-emerald-400">{fmt(free)}</td>
+                      <td className="py-3 px-3.5 text-amber-400">{fmt(locked)}</td>
+                      <td className="py-3 px-3.5 font-bold text-white">{fmt(total)}</td>
+                    </tr>
+                  );
+                })}
+
+            {/* Spot Assets */}
+            {data?.spotAcc?.balances &&
+              data.spotAcc.balances
+                .filter(b => parseFloat(b.free) > 0.0001 || parseFloat(b.locked) > 0.0001)
+                .map((b, idx) => {
+                  const free = parseFloat(b.free);
+                  const locked = parseFloat(b.locked);
+                  const total = free + locked;
+                  return (
+                    <tr key={`spot_${idx}`} className="hover:bg-slate-800/40 transition-colors">
+                      <td className="py-3 px-3.5 font-bold text-white">{b.asset}</td>
+                      <td className="py-3 px-3.5 font-sans">
+                        <span className="bg-slate-800 text-slate-300 border border-slate-700 px-2 py-0.5 rounded-sm text-[11px] font-mono">
+                          Spot
+                        </span>
+                      </td>
+                      <td className="py-3 px-3.5 text-emerald-400">{fmt(free)}</td>
+                      <td className="py-3 px-3.5 text-amber-400">{fmt(locked)}</td>
+                      <td className="py-3 px-3.5 font-bold text-white">{fmt(total)}</td>
+                    </tr>
+                  );
+                })}
+
+            {(!futures?.assets?.some(a => parseFloat(a.walletBalance) > 0.0001) &&
+              !data?.spotAcc?.balances?.some(b => parseFloat(b.free) > 0.0001)) && (
+              <tr>
+                <td colSpan={5} className="py-6 text-center text-slate-500 font-sans">
+                  Sin balances detectados o sincronización pendiente.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </section>
+
+      {/* Grid: Trades & Funding history */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Trades */}
+        <section className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-sm overflow-x-auto relative overflow-hidden">
+          <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-800">
+            <h2 className="text-xs uppercase tracking-widest text-slate-400 font-bold flex items-center gap-2 m-0">
+              <span className="w-2 h-2 bg-amber-500 rounded-sm rotate-45 inline-block"></span>
+              Últimos Trades Ejecutados
+            </h2>
+          </div>
+          <table className="w-full border-collapse text-xs whitespace-nowrap font-mono">
+            <thead>
+              <tr className="text-slate-400 text-left bg-slate-950/80 border-b border-slate-800 text-[11px] uppercase tracking-wider">
+                <th className="py-2 px-3 font-semibold rounded-l">Fecha</th>
+                <th className="py-2 px-3 font-semibold">Lado</th>
+                <th className="py-2 px-3 font-semibold">Precio</th>
+                <th className="py-2 px-3 font-semibold">Cantidad</th>
+                <th className="py-2 px-3 font-semibold rounded-r">Comisión</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/80">
+              {data?.trades && data.trades.length > 0 ? (
+                data.trades.slice(0, 10).map((t, idx) => (
+                  <tr key={idx} className="hover:bg-slate-800/40">
+                    <td className="py-2 px-3 text-slate-400">
+                      {new Date(t.time).toLocaleTimeString()}
+                    </td>
+                    <td className="py-2 px-3">
+                      <span
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                          t.side === 'BUY'
+                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                            : 'bg-red-500/10 text-red-400 border border-red-500/30'
+                        }`}
+                      >
+                        {t.side}
+                      </span>
+                    </td>
+                    <td className="py-2 px-3 text-white">{fmt(t.price)}</td>
+                    <td className="py-2 px-3 text-slate-300">{t.qty}</td>
+                    <td className="py-2 px-3 text-slate-400">
+                      {t.commission} {t.commissionAsset}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="py-4 text-center text-slate-500 font-sans">
+                    Sin trades recientes.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </section>
+
+        {/* Funding Fee History */}
+        <section className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-sm overflow-x-auto relative overflow-hidden">
+          <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-800">
+            <h2 className="text-xs uppercase tracking-widest text-slate-400 font-bold flex items-center gap-2 m-0">
+              <span className="w-2 h-2 bg-amber-500 rounded-sm rotate-45 inline-block"></span>
+              Historial de Tasas de Financiación (Funding)
+            </h2>
+          </div>
+          <table className="w-full border-collapse text-xs whitespace-nowrap font-mono">
+            <thead>
+              <tr className="text-slate-400 text-left bg-slate-950/80 border-b border-slate-800 text-[11px] uppercase tracking-wider">
+                <th className="py-2 px-3 font-semibold rounded-l">Fecha</th>
+                <th className="py-2 px-3 font-semibold">Símbolo</th>
+                <th className="py-2 px-3 font-semibold">Activo</th>
+                <th className="py-2 px-3 font-semibold rounded-r">Monto Recibido / Pagado</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/80">
+              {data?.funding && data.funding.length > 0 ? (
+                data.funding.slice(0, 10).map((f, idx) => {
+                  const income = parseFloat(f.income);
+                  return (
+                    <tr key={idx} className="hover:bg-slate-800/40">
+                      <td className="py-2 px-3 text-slate-400">
+                        {new Date(f.time).toLocaleDateString()}{' '}
+                        {new Date(f.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </td>
+                      <td className="py-2 px-3 text-white">{f.symbol}</td>
+                      <td className="py-2 px-3 text-slate-400">{f.asset}</td>
+                      <td
+                        className={`py-2 px-3 font-bold ${
+                          income >= 0 ? 'text-emerald-400' : 'text-red-400'
+                        }`}
+                      >
+                        {income > 0 ? '+' : ''}
+                        {fmt(income)}
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={4} className="py-4 text-center text-slate-500 font-sans">
+                    Sin cobros de financiación recientes.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </section>
+      </div>
+
+      {/* Custom Key Modal */}
+      {showKeyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 max-w-md w-full shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-0.5 bg-amber-500"></div>
+
+            <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2 uppercase tracking-wide">
+              <Key className="w-4 h-4 text-amber-400" />
+              Credenciales API de Binance Futures
+            </h3>
+            <p className="text-xs text-slate-400 mb-4 leading-relaxed">
+              Ingresa tu API Key y Secret para firmar solicitudes a Binance Futures. Se mantendrán activas durante la sesión actual para sincronizar balances y colocar órdenes.
+            </p>
+
+            <form onSubmit={handleSaveKeys} className="space-y-4 text-xs">
+              <div>
+                <label className="text-slate-300 font-semibold block mb-1 uppercase tracking-wider text-[10px]">
+                  Binance API Key
+                </label>
+                <input
+                  type="text"
+                  value={customKey}
+                  onChange={e => setCustomKey(e.target.value)}
+                  placeholder="Pega tu API Key..."
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono focus:border-amber-400 focus:outline-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-semibold block mb-1 uppercase tracking-wider text-[10px]">
+                  Binance API Secret
+                </label>
+                <input
+                  type="password"
+                  value={customSecret}
+                  onChange={e => setCustomSecret(e.target.value)}
+                  placeholder="Pega tu Secret Key..."
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono focus:border-amber-400 focus:outline-none"
+                  required
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowKeyModal(false)}
+                  className="flex-1 bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 py-2 rounded-lg font-semibold uppercase tracking-wider cursor-pointer transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 py-2 rounded-lg font-bold uppercase tracking-wider cursor-pointer transition-colors shadow-sm"
+                >
+                  Guardar y Sincronizar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
