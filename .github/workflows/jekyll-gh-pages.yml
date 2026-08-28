@@ -1,3 +1,0 @@
-git add .
-git commit -m "ci: configure GitHub Pages deployment workflow"
-git push origin main
