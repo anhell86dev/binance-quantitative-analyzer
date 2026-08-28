@@ -37,6 +37,7 @@ import { TradingJournalTab } from './components/TradingJournalTab';
 import { BinanceWalletTab } from './components/BinanceWalletTab';
 import { TradFiMonitorTab } from './components/TradFiMonitorTab';
 import { TradFiScannerTab } from './components/TradFiScannerTab';
+import { BinanceAuthGate } from './components/BinanceAuthGate';
 import { BinanceOrderModal } from './components/BinanceOrderModal';
 import { CyclesModal } from './components/CyclesModal';
 import { LogTerminal } from './components/LogTerminal';
@@ -54,10 +55,20 @@ import {
   TrendingUp,
   ArrowUpRight,
   ArrowDownRight,
+  LogOut,
 } from 'lucide-react';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'analysis' | 'tradfi_scanner' | 'scanner' | 'tradfi' | 'journal' | 'binance'>('analysis');
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    try {
+      const k = localStorage.getItem('binance_custom_api_key');
+      const s = localStorage.getItem('binance_custom_api_secret');
+      return Boolean(k && s);
+    } catch {
+      return false;
+    }
+  });
+  const [activeTab, setActiveTab] = useState<'binance' | 'analysis' | 'tradfi_scanner' | 'tradfi' | 'scanner' | 'journal'>('binance');
   const [symbolInput, setSymbolInput] = useState<string>('BTCUSDT');
   const [activeSymbol, setActiveSymbol] = useState<string>('BTCUSDT');
   const [isLoadingMarket, setIsLoadingMarket] = useState<boolean>(false);
@@ -101,8 +112,20 @@ export default function App() {
   const [binanceData, setBinanceData] = useState<BinanceDashboardData | null>(null);
   const [isLoadingBinance, setIsLoadingBinance] = useState<boolean>(false);
   const [apiConfigured, setApiConfigured] = useState<boolean>(false);
-  const [customApiKey, setCustomApiKey] = useState<string>('');
-  const [customApiSecret, setCustomApiSecret] = useState<string>('');
+  const [customApiKey, setCustomApiKey] = useState<string>(() => {
+    try {
+      return localStorage.getItem('binance_custom_api_key') || '';
+    } catch {
+      return '';
+    }
+  });
+  const [customApiSecret, setCustomApiSecret] = useState<string>(() => {
+    try {
+      return localStorage.getItem('binance_custom_api_secret') || '';
+    } catch {
+      return '';
+    }
+  });
 
   // Logs
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -423,16 +446,32 @@ export default function App() {
     }
   };
 
-  // Run initial analyze on mount
+  // Disconnect Binance Credentials & Logout
+  const handleDisconnect = () => {
+    try {
+      localStorage.removeItem('binance_custom_api_key');
+      localStorage.removeItem('binance_custom_api_secret');
+    } catch {}
+    setCustomApiKey('');
+    setCustomApiSecret('');
+    setBinanceData(null);
+    setIsAuthenticated(false);
+    addLog('ℹ️ Sesión cerrada y claves de Binance desconectadas.', 'info');
+  };
+
+  // Run initial analyze on mount and sync wallet if authenticated
   useEffect(() => {
     runAutoAnalyze('BTCUSDT');
+    if (isAuthenticated) {
+      syncBinanceWallet();
+    }
 
     return () => {
       if (wsRef.current) wsRef.current.close();
       if (oiTimerRef.current) clearInterval(oiTimerRef.current);
       if (scannerTimerRef.current) clearTimeout(scannerTimerRef.current);
     };
-  }, []);
+  }, [isAuthenticated, syncBinanceWallet]);
 
   // Export analysis JSON
   const handleExportJson = () => {
@@ -461,6 +500,27 @@ export default function App() {
     runAutoAnalyze(activeSymbol);
   };
 
+  if (!isAuthenticated) {
+    return (
+      <BinanceAuthGate
+        savedApiKey={customApiKey}
+        savedApiSecret={customApiSecret}
+        onAuthenticated={(k, s) => {
+          setCustomApiKey(k);
+          setCustomApiSecret(s);
+          setIsAuthenticated(true);
+          setActiveTab('binance');
+          addLog('✅ Autenticado con éxito en Binance Futures.', 'success');
+        }}
+        onContinueDemo={() => {
+          setIsAuthenticated(true);
+          setActiveTab('binance');
+          addLog('ℹ️ Acceso en modo demostración activo.', 'info');
+        }}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 font-sans flex flex-col selection:bg-amber-500 selection:text-slate-950">
       {/* Top Main Navigation & Search Bar */}
@@ -486,8 +546,23 @@ export default function App() {
             </div>
           </div>
 
-          {/* Geometric Navigation Tabs (6 Core Views) */}
+          {/* Geometric Navigation Tabs (6 Core Views - Mi Cuenta Binance in Position 1) */}
           <nav className="flex items-center gap-3 sm:gap-5 text-xs font-semibold uppercase tracking-wider overflow-x-auto py-1">
+            <button
+              onClick={() => {
+                setActiveTab('binance');
+                syncBinanceWallet();
+              }}
+              className={`py-2 px-1 border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                activeTab === 'binance'
+                  ? 'border-amber-500 text-slate-100 font-bold'
+                  : 'border-transparent text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Wallet className="w-3.5 h-3.5 text-amber-400" />
+              <span>Mi Cuenta Binance</span>
+            </button>
+
             <button
               onClick={() => setActiveTab('analysis')}
               className={`py-2 px-1 border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
@@ -555,24 +630,9 @@ export default function App() {
               <BookOpen className="w-3.5 h-3.5" />
               <span>Bitácora de Trading</span>
             </button>
-
-            <button
-              onClick={() => {
-                setActiveTab('binance');
-                syncBinanceWallet();
-              }}
-              className={`py-2 px-1 border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
-                activeTab === 'binance'
-                  ? 'border-amber-500 text-slate-100 font-bold'
-                  : 'border-transparent text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Wallet className="w-3.5 h-3.5" />
-              <span>Mi Cuenta Binance</span>
-            </button>
           </nav>
 
-          {/* Symbol Search & Action */}
+          {/* Symbol Search, Action & Disconnect */}
           <div className="flex items-center gap-2 flex-grow sm:flex-grow-0">
             <div className="relative flex-1 sm:w-44">
               <input
@@ -603,6 +663,16 @@ export default function App() {
             >
               <Zap className={`w-3.5 h-3.5 ${isLoadingMarket ? 'animate-spin' : ''}`} />
               <span>{isLoadingMarket ? 'Cargando...' : 'Auto-Analizar'}</span>
+            </button>
+
+            {/* Logout / Disconnect Button */}
+            <button
+              onClick={handleDisconnect}
+              title="Desconectar Claves de Binance"
+              className="bg-slate-900 hover:bg-red-950/60 border border-slate-800 hover:border-red-500/40 text-slate-400 hover:text-red-300 text-xs px-2.5 py-2 rounded-lg font-mono flex items-center gap-1.5 cursor-pointer transition-colors"
+            >
+              <LogOut className="w-3.5 h-3.5 text-slate-400 hover:text-red-400" />
+              <span className="hidden xl:inline">Salir</span>
             </button>
           </div>
         </div>
@@ -837,6 +907,7 @@ export default function App() {
             apiConfigured={apiConfigured || Boolean(customApiKey && customApiSecret)}
             initialApiKey={customApiKey}
             initialApiSecret={customApiSecret}
+            onDisconnect={handleDisconnect}
             onSaveCustomKeys={(k, s) => {
               setCustomApiKey(k);
               setCustomApiSecret(s);

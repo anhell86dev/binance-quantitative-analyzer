@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   Lock,
   ExternalLink,
+  LogOut,
 } from 'lucide-react';
 import { verifyBinanceApiKeys, ApiKeyVerificationResult } from '../utils/marketService';
 
@@ -27,6 +28,7 @@ interface BinanceWalletTabProps {
   initialApiKey?: string;
   initialApiSecret?: string;
   onSaveCustomKeys?: (key: string, secret: string) => void;
+  onDisconnect?: () => void;
 }
 
 export const BinanceWalletTab: React.FC<BinanceWalletTabProps> = ({
@@ -37,6 +39,7 @@ export const BinanceWalletTab: React.FC<BinanceWalletTabProps> = ({
   initialApiKey = '',
   initialApiSecret = '',
   onSaveCustomKeys,
+  onDisconnect,
 }) => {
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [customKey, setCustomKey] = useState(initialApiKey);
@@ -137,6 +140,16 @@ export const BinanceWalletTab: React.FC<BinanceWalletTabProps> = ({
             </h2>
           </div>
           <div className="flex items-center gap-2">
+            {onDisconnect && (
+              <button
+                onClick={onDisconnect}
+                title="Desconectar y volver a la pantalla de inicio"
+                className="bg-slate-950 hover:bg-red-950/60 border border-slate-800 hover:border-red-500/40 text-slate-400 hover:text-red-300 text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer transition-colors font-mono"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Desconectar</span>
+              </button>
+            )}
             <button
               onClick={() => {
                 setShowKeyModal(true);
