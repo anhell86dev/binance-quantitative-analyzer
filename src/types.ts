@@ -259,3 +259,68 @@ export interface JournalStats {
   consecutiveWins: number;
 }
 
+// 5. TradFi & Macro Monitoring Types
+export interface TradFiAsset {
+  id: string;
+  symbol: string;
+  name: string;
+  category: 'CURRENCY' | 'EQUITIES' | 'COMMODITIES' | 'RATES' | 'CRYPTO_MACRO';
+  price: number;
+  change24h: number;
+  change7d?: number;
+  high24h: number;
+  low24h: number;
+  unit: string;
+  btcCorrelation: number; // -1.0 to 1.0
+  impactOnCrypto: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
+  sparkline: number[];
+  description: string;
+  lastUpdated: number;
+}
+
+export interface MacroRegime {
+  regime: 'RISK_ON' | 'RISK_OFF' | 'STAGFLATION' | 'LIQUIDITY_EXPANSION' | 'NEUTRAL';
+  title: string;
+  biasForCrypto: 'FUERTE ALCISTA' | 'ALCISTA' | 'NEUTRAL' | 'BAJISTA' | 'FUERTE BAJISTA';
+  confidence: number; // 0 to 100%
+  summary: string;
+  keyCatalysts: string[];
+  dxyTrend: string;
+  spxTrend: string;
+  ratesTrend: string;
+  goldTrend: string;
+}
+
+export interface CorrelationMatrixData {
+  cryptoSymbols: string[];
+  tradFiSymbols: { id: string; label: string; name: string }[];
+  matrix: Record<string, Record<string, number>>;
+  timeframe: string;
+}
+
+export interface MarketSession {
+  name: string;
+  city: string;
+  flag: string;
+  isOpen: boolean;
+  openUtcHour: number;
+  closeUtcHour: number;
+  statusText: string;
+}
+
+export interface TradFiDashboardData {
+  assets: TradFiAsset[];
+  macroRegime: MacroRegime;
+  correlationMatrix: CorrelationMatrixData;
+  sessions: MarketSession[];
+  lastUpdated: number;
+  comparativeHistory: {
+    time: number;
+    date: string;
+    btcNormalized: number;
+    spxNormalized: number;
+    goldNormalized: number;
+    dxyNormalized: number;
+  }[];
+}
+

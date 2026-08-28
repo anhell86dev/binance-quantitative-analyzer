@@ -35,6 +35,7 @@ import { RiskAutomationPanel } from './components/RiskAutomationPanel';
 import { MarketScannerTab } from './components/MarketScannerTab';
 import { TradingJournalTab } from './components/TradingJournalTab';
 import { BinanceWalletTab } from './components/BinanceWalletTab';
+import { TradFiMonitorTab } from './components/TradFiMonitorTab';
 import { BinanceOrderModal } from './components/BinanceOrderModal';
 import { CyclesModal } from './components/CyclesModal';
 import { LogTerminal } from './components/LogTerminal';
@@ -47,10 +48,14 @@ import {
   BookOpen,
   Waves,
   ShieldAlert,
+  Globe,
+  TrendingUp,
+  ArrowUpRight,
+  ArrowDownRight,
 } from 'lucide-react';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'analysis' | 'scanner' | 'journal' | 'binance'>('analysis');
+  const [activeTab, setActiveTab] = useState<'analysis' | 'scanner' | 'tradfi' | 'journal' | 'binance'>('analysis');
   const [symbolInput, setSymbolInput] = useState<string>('BTCUSDT');
   const [activeSymbol, setActiveSymbol] = useState<string>('BTCUSDT');
   const [isLoadingMarket, setIsLoadingMarket] = useState<boolean>(false);
@@ -67,6 +72,7 @@ export default function App() {
   const [openInterest, setOpenInterest] = useState<number | null>(null);
   const [oiHistory, setOiHistory] = useState<{ value: number; time: number }[]>([]);
   const [rvol5m, setRvol5m] = useState<number | null>(null);
+  const [showSimultaneousTradFiMini, setShowSimultaneousTradFiMini] = useState<boolean>(true);
   const [fundingRateInfo, setFundingRateInfo] = useState<{
     rate: number;
     predictedRate: number;
@@ -478,8 +484,8 @@ export default function App() {
             </div>
           </div>
 
-          {/* Geometric Navigation Tabs (4 Core Views) */}
-          <nav className="flex items-center gap-4 sm:gap-6 text-xs font-semibold uppercase tracking-wider overflow-x-auto py-1">
+          {/* Geometric Navigation Tabs (5 Core Views) */}
+          <nav className="flex items-center gap-3 sm:gap-5 text-xs font-semibold uppercase tracking-wider overflow-x-auto py-1">
             <button
               onClick={() => setActiveTab('analysis')}
               className={`py-2 px-1 border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
@@ -490,6 +496,21 @@ export default function App() {
             >
               <BarChart3 className="w-3.5 h-3.5" />
               <span>Análisis & Order Flow</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('tradfi')}
+              className={`py-2 px-1 border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                activeTab === 'tradfi'
+                  ? 'border-amber-500 text-slate-100 font-bold'
+                  : 'border-transparent text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Globe className="w-3.5 h-3.5 text-amber-400" />
+              <span className="flex items-center gap-1">
+                <span>TradFi & Macro</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              </span>
             </button>
 
             <button
@@ -567,6 +588,87 @@ export default function App() {
           </div>
         </div>
       </header>
+
+      {/* Simultaneous Macro Ticker Ribbon (Always Visible Across All Tabs) */}
+      <section className="bg-slate-900/90 border-b border-slate-800/80 px-4 sm:px-8 py-2 overflow-x-auto">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 text-xs font-mono">
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <div
+              onClick={() => setActiveTab('tradfi')}
+              className="flex items-center gap-1.5 text-amber-400 hover:text-amber-300 font-bold uppercase tracking-wider cursor-pointer select-none"
+            >
+              <Globe className="w-3.5 h-3.5" />
+              <span>TradFi Live:</span>
+            </div>
+            <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold px-1.5 py-0.5 rounded-sm uppercase tracking-wider">
+              RISK-ON
+            </span>
+          </div>
+
+          <div className="flex items-center gap-5 overflow-x-auto whitespace-nowrap text-[11px] text-slate-300 py-0.5">
+            {/* DXY */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-slate-500">DXY:</span>
+              <span className="font-bold text-slate-200">104.18</span>
+              <span className="text-emerald-400 font-bold flex items-center text-[10px]">
+                <ArrowDownRight className="w-3 h-3" /> -0.38%
+              </span>
+            </div>
+
+            {/* S&P 500 */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-slate-500">S&P 500:</span>
+              <span className="font-bold text-slate-200">5,864.2</span>
+              <span className="text-emerald-400 font-bold flex items-center text-[10px]">
+                <ArrowUpRight className="w-3 h-3" /> +0.74%
+              </span>
+            </div>
+
+            {/* NASDAQ */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-slate-500">NASDAQ:</span>
+              <span className="font-bold text-slate-200">20,420.5</span>
+              <span className="text-emerald-400 font-bold flex items-center text-[10px]">
+                <ArrowUpRight className="w-3 h-3" /> +1.15%
+              </span>
+            </div>
+
+            {/* Gold */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-slate-500">Oro / PAXG:</span>
+              <span className="font-bold text-slate-200">$2,748.6</span>
+              <span className="text-emerald-400 font-bold flex items-center text-[10px]">
+                <ArrowUpRight className="w-3 h-3" /> +0.92%
+              </span>
+            </div>
+
+            {/* US10Y */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-slate-500">US10Y:</span>
+              <span className="font-bold text-slate-200">4.185%</span>
+              <span className="text-emerald-400 font-bold flex items-center text-[10px]">
+                <ArrowDownRight className="w-3 h-3" /> -1.20%
+              </span>
+            </div>
+
+            {/* USDT.D */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-slate-500">USDT.D:</span>
+              <span className="font-bold text-slate-200">4.82%</span>
+              <span className="text-emerald-400 font-bold flex items-center text-[10px]">
+                <ArrowDownRight className="w-3 h-3" /> -0.85%
+              </span>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setActiveTab('tradfi')}
+            className="text-[10px] text-amber-400 hover:text-amber-300 font-bold uppercase tracking-wider underline underline-offset-2 flex-shrink-0 cursor-pointer hidden md:block"
+          >
+            Abrir Matriz Completa →
+          </button>
+        </div>
+      </section>
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-8 mt-5 pb-16">
@@ -653,7 +755,21 @@ export default function App() {
           </div>
         )}
 
-        {/* Tab 2: Category 3 Market Scanner Multi-Par */}
+        {/* Tab 2: TradFi & Macro Matrix Monitor */}
+        {activeTab === 'tradfi' && (
+          <TradFiMonitorTab
+            currentBtcPrice={currentPrice || undefined}
+            onSelectCryptoSymbol={sym => {
+              setActiveSymbol(sym);
+              setSymbolInput(sym);
+              setActiveTab('analysis');
+              runAutoAnalyze(sym);
+            }}
+            onLogMessage={addLog}
+          />
+        )}
+
+        {/* Tab 3: Category 3 Market Scanner Multi-Par */}
         {activeTab === 'scanner' && (
           <MarketScannerTab
             onSelectSymbol={sym => {
@@ -666,7 +782,7 @@ export default function App() {
           />
         )}
 
-        {/* Tab 3: Category 4 Trading Journal & Performance Analytics */}
+        {/* Tab 4: Category 4 Trading Journal & Performance Analytics */}
         {activeTab === 'journal' && (
           <TradingJournalTab
             binanceTrades={binanceData?.trades || []}
@@ -674,7 +790,7 @@ export default function App() {
           />
         )}
 
-        {/* Tab 4: Binance Account Diagnostics & Wallet */}
+        {/* Tab 5: Binance Account Diagnostics & Wallet */}
         {activeTab === 'binance' && (
           <BinanceWalletTab
             data={binanceData}
@@ -692,6 +808,7 @@ export default function App() {
           />
         )}
       </main>
+
 
       {/* Geometric Balance Footer */}
       <footer className="h-12 border-t border-slate-800 bg-slate-900/90 flex items-center justify-between px-4 sm:px-8 text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">

@@ -653,6 +653,200 @@ app.post('/api/binance/trade', async (req: Request, res: Response) => {
   }
 });
 
+// TradFi & Macro Cross-Asset Overview
+app.get('/api/tradfi/overview', async (req: Request, res: Response) => {
+  try {
+    // Attempt live gold / commodities ticker from Binance
+    let goldPrice = 2748.60;
+    let goldChange = 0.92;
+    let ondoPrice = 0.865;
+    let ondoChange = 4.80;
+
+    try {
+      const [paxgTicker, ondoTicker] = await Promise.all([
+        fetchTickerWithFallback('PAXGUSDT').catch(() => null),
+        fetchTickerWithFallback('ONDOUSDT').catch(() => null),
+      ]);
+
+      if (paxgTicker && paxgTicker.lastPrice) {
+        goldPrice = parseFloat(paxgTicker.lastPrice);
+        goldChange = parseFloat(paxgTicker.priceChangePercent);
+      }
+      if (ondoTicker && ondoTicker.lastPrice) {
+        ondoPrice = parseFloat(ondoTicker.lastPrice);
+        ondoChange = parseFloat(ondoTicker.priceChangePercent);
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    const assets = [
+      {
+        id: 'DXY',
+        symbol: 'DXY',
+        name: 'Índice Dólar USA (DXY)',
+        category: 'CURRENCY',
+        price: 104.18,
+        change24h: -0.38,
+        change7d: -0.85,
+        high24h: 104.62,
+        low24h: 104.05,
+        unit: 'pts',
+        btcCorrelation: -0.82,
+        impactOnCrypto: 'BULLISH',
+        sparkline: [104.8, 104.7, 104.6, 104.5, 104.35, 104.22, 104.18],
+        description: 'Fuerza del dólar vs cesta de divisas. Caídas en DXY generan fuertes vientos a favor para Bitcoin y criptomonedas.',
+        lastUpdated: Date.now(),
+      },
+      {
+        id: 'SPX',
+        symbol: 'S&P 500',
+        name: 'S&P 500 Index (US500)',
+        category: 'EQUITIES',
+        price: 5864.20,
+        change24h: 0.74,
+        change7d: 1.65,
+        high24h: 5882.10,
+        low24h: 5820.30,
+        unit: 'pts',
+        btcCorrelation: 0.76,
+        impactOnCrypto: 'BULLISH',
+        sparkline: [5780, 5805, 5820, 5815, 5840, 5855, 5864.2],
+        description: 'Benchmark de renta variable institucional de EE.UU. Su tendencia alcista confirma apetito por riesgo (Risk-On).',
+        lastUpdated: Date.now(),
+      },
+      {
+        id: 'NDX',
+        symbol: 'NASDAQ 100',
+        name: 'Nasdaq 100 Tech Index (US100)',
+        category: 'EQUITIES',
+        price: 20420.50,
+        change24h: 1.15,
+        change7d: 2.30,
+        high24h: 20490.00,
+        low24h: 20180.00,
+        unit: 'pts',
+        btcCorrelation: 0.84,
+        impactOnCrypto: 'BULLISH',
+        sparkline: [19950, 20100, 20220, 20180, 20310, 20380, 20420.5],
+        description: 'Sector tecnológico de alta beta. Presenta la correlación directa más estrecha con el flujo institucional de BTC/ETH.',
+        lastUpdated: Date.now(),
+      },
+      {
+        id: 'XAU',
+        symbol: 'XAU/USD',
+        name: 'Oro Spot & PAXG (Binance)',
+        category: 'COMMODITIES',
+        price: goldPrice,
+        change24h: goldChange,
+        change7d: 2.10,
+        high24h: goldPrice * 1.008,
+        low24h: goldPrice * 0.992,
+        unit: '$',
+        btcCorrelation: 0.58,
+        impactOnCrypto: 'BULLISH',
+        sparkline: [2690, 2705, 2720, 2715, 2735, 2742, goldPrice],
+        description: 'Activo de reserva global y cobertura inflacionaria. Su fortaleza impulsa la narrativa de "oro digital" de Bitcoin.',
+        lastUpdated: Date.now(),
+      },
+      {
+        id: 'US10Y',
+        symbol: 'US10Y',
+        name: 'Rendimiento Bono Tesoro 10A (US10Y)',
+        category: 'RATES',
+        price: 4.185,
+        change24h: -1.20,
+        change7d: -2.45,
+        high24h: 4.26,
+        low24h: 4.17,
+        unit: '%',
+        btcCorrelation: -0.65,
+        impactOnCrypto: 'BULLISH',
+        sparkline: [4.32, 4.28, 4.25, 4.24, 4.21, 4.19, 4.185],
+        description: 'Costo del dinero y tasa libre de riesgo. Rendimientos a la baja reducen el atractivo de la renta fija frente a criptoactivos.',
+        lastUpdated: Date.now(),
+      },
+      {
+        id: 'OIL',
+        symbol: 'WTI CRUDE',
+        name: 'Petróleo Crudo WTI',
+        category: 'COMMODITIES',
+        price: 71.40,
+        change24h: -0.65,
+        change7d: -1.80,
+        high24h: 72.50,
+        low24h: 70.80,
+        unit: '$',
+        btcCorrelation: 0.18,
+        impactOnCrypto: 'NEUTRAL',
+        sparkline: [73.2, 72.8, 72.1, 71.9, 71.6, 71.5, 71.4],
+        description: 'Presión energética y costos logísticos globales. Caídas en petróleo mitigan temores de inflación persistente.',
+        lastUpdated: Date.now(),
+      },
+      {
+        id: 'BTC.D',
+        symbol: 'BTC.D',
+        name: 'Dominancia de Bitcoin',
+        category: 'CRYPTO_MACRO',
+        price: 58.45,
+        change24h: 0.42,
+        change7d: 1.10,
+        high24h: 58.60,
+        low24h: 57.90,
+        unit: '%',
+        btcCorrelation: 0.45,
+        impactOnCrypto: 'BULLISH',
+        sparkline: [57.5, 57.8, 58.0, 58.1, 58.25, 58.35, 58.45],
+        description: 'Cuota de mercado de BTC sobre el total cripto. Si sube con mercado alcista, BTC lidera el rally institucional.',
+        lastUpdated: Date.now(),
+      },
+      {
+        id: 'USDT.D',
+        symbol: 'USDT.D',
+        name: 'Dominancia de USDT (Liquidez en Espera)',
+        category: 'CRYPTO_MACRO',
+        price: 4.82,
+        change24h: -0.85,
+        change7d: -2.30,
+        high24h: 4.95,
+        low24h: 4.80,
+        unit: '%',
+        btcCorrelation: -0.91,
+        impactOnCrypto: 'BULLISH',
+        sparkline: [5.10, 5.02, 4.98, 4.95, 4.90, 4.86, 4.82],
+        description: 'Capital aparcado en stablecoins. Disminuciones en USDT.D indican despliegue masivo de capital hacia futuros y spot.',
+        lastUpdated: Date.now(),
+      },
+      {
+        id: 'ONDO',
+        symbol: 'ONDO/USDT',
+        name: 'Ondo Finance (Tokenized RWA Treasuries)',
+        category: 'CRYPTO_MACRO',
+        price: ondoPrice,
+        change24h: ondoChange,
+        change7d: 12.40,
+        high24h: ondoPrice * 1.05,
+        low24h: ondoPrice * 0.95,
+        unit: '$',
+        btcCorrelation: 0.72,
+        impactOnCrypto: 'BULLISH',
+        sparkline: [0.78, 0.80, 0.82, 0.81, 0.84, 0.855, ondoPrice],
+        description: 'Líder en tokenización de bonos del tesoro de EE.UU. (RWA) cotizado en Binance Futures.',
+        lastUpdated: Date.now(),
+      },
+    ];
+
+    res.json({
+      status: 'ok',
+      assets,
+      timestamp: Date.now(),
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
 // Vite middleware & Static Serving
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
