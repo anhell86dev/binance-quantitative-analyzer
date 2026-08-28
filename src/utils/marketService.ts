@@ -1,3 +1,5 @@
+import { formatKlines } from './indicators';
+
 // Client-side Web Crypto HMAC SHA256 signer and Binance API client for GitHub Pages & static hosting
 
 const BINANCE_FUTURES_BASE = 'https://fapi.binance.com';
@@ -186,7 +188,9 @@ export async function fetchBinanceDashboard(
     const contentType = res.headers.get('content-type') || '';
     if (res.ok && contentType.includes('application/json')) {
       const data = await res.json();
-      return data;
+      if (data && data.configured !== undefined) {
+        return data;
+      }
     }
   } catch (e) {
     // Backend API not available (e.g. GitHub Pages)
@@ -198,6 +202,8 @@ export async function fetchBinanceDashboard(
       configured: false,
       futuresAcc: { code: -2015, msg: 'API Key y Secret no configuradas. Ingresa tus claves en "Configurar Claves".' },
       spotAcc: null,
+      positions: [],
+      balance: { totalWalletBalance: 1000, availableBalance: 1000 },
       funding: [],
       trades: [],
     };
@@ -205,6 +211,7 @@ export async function fetchBinanceDashboard(
 
   let futuresAcc: any = null;
   let spotAcc: any = null;
+  let positionRisk: any[] = [];
   let funding: any[] = [];
   let trades: any[] = [];
 
@@ -212,6 +219,12 @@ export async function fetchBinanceDashboard(
     futuresAcc = await signedFuturesRequestClient('GET', '/fapi/v2/account', {}, credentials);
   } catch (e: any) {
     futuresAcc = { code: -1, msg: e.message };
+  }
+
+  try {
+    positionRisk = await signedFuturesRequestClient('GET', '/fapi/v2/positionRisk', {}, credentials);
+  } catch (e) {
+    positionRisk = [];
   }
 
   try {
@@ -234,10 +247,28 @@ export async function fetchBinanceDashboard(
     }
   }
 
+  // Collect all open positions with non-zero positionAmt
+  let positions: any[] = [];
+  if (Array.isArray(positionRisk) && positionRisk.length > 0) {
+    positions = positionRisk.filter((p: any) => Math.abs(parseFloat(p.positionAmt || '0')) > 0);
+  } else if (futuresAcc && Array.isArray(futuresAcc.positions)) {
+    positions = futuresAcc.positions.filter((p: any) => Math.abs(parseFloat(p.positionAmt || '0')) > 0);
+  }
+
+  const walletBal = parseFloat(futuresAcc?.totalWalletBalance || '0');
+  const availBal = parseFloat(futuresAcc?.availableBalance || '0');
+
   return {
-    configured: true,
+    configured: !futuresAcc?.code || futuresAcc.code === 0,
     futuresAcc,
     spotAcc,
+    positions,
+    balance: {
+      totalWalletBalance: walletBal > 0 ? walletBal : 1000,
+      availableBalance: availBal > 0 ? availBal : 1000,
+      totalUnrealizedProfit: parseFloat(futuresAcc?.totalUnrealizedProfit || '0'),
+      totalMarginBalance: parseFloat(futuresAcc?.totalMarginBalance || '0'),
+    },
     funding: Array.isArray(funding) ? funding : [],
     trades: Array.isArray(trades) ? trades : [],
   };
@@ -431,16 +462,29 @@ export async function fetchTickerWithFallback(symbol: string) {
 
 // Resilient Open Interest fetcher
 export async function fetchOpenInterestWithFallback(symbol: string) {
-
-  try {
-    const resp = await fetch(`${BINANCE_FUTURES_BASE}/fapi/v1/openInterest?symbol=${symbol}`);
-    if (resp.ok) {
-      return await resp.json();
+  const endpoints = [
+    `${BINANCE_FUTURES_BASE}/fapi/v1/openInterest?symbol=${symbol}`,
+    `https://fapi.binance.com/fapi/v1/openInterest?symbol=${symbol}`,
+  ];
+  for (const url of endpoints) {
+    try {
+      const resp = await fetch(url);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data && (data.openInterest || data.openInterest !== undefined)) {
+          return {
+            openInterest: data.openInterest,
+            value: parseFloat(data.openInterest) || 0,
+            symbol: data.symbol || symbol,
+            time: Number(data.time) || Date.now(),
+          };
+        }
+      }
+    } catch (e) {
+      // Ignore restricted location on openInterest
     }
-  } catch (e) {
-    // Ignore restricted location on openInterest
   }
-  return { openInterest: '0', symbol };
+  return { openInterest: '0', value: 0, symbol, time: Date.now() };
 }
 
 export async function fetchMarketData(symbol: string) {
@@ -451,7 +495,18 @@ export async function fetchMarketData(symbol: string) {
     if (resp.ok && contentType.includes('application/json')) {
       const data = await resp.json();
       if (data.ticker && !data.ticker.code && data.candles) {
-        return data;
+        return {
+          ticker: data.ticker,
+          klines1w: formatKlines(data.klines1w || []),
+          candles: {
+            '1d': formatKlines(data.candles['1d'] || []),
+            '4h': formatKlines(data.candles['4h'] || []),
+            '1h': formatKlines(data.candles['1h'] || []),
+            '15m': formatKlines(data.candles['15m'] || []),
+            '5m': formatKlines(data.candles['5m'] || []),
+          },
+          oi: data.oi,
+        };
       }
     }
   } catch (e) {
@@ -472,13 +527,13 @@ export async function fetchMarketData(symbol: string) {
 
   return {
     ticker,
-    klines1w,
+    klines1w: formatKlines(klines1w),
     candles: {
-      '1d': klines1d,
-      '4h': klines4h,
-      '1h': klines1h,
-      '15m': klines15m,
-      '5m': klines5m,
+      '1d': formatKlines(klines1d),
+      '4h': formatKlines(klines4h),
+      '1h': formatKlines(klines1h),
+      '15m': formatKlines(klines15m),
+      '5m': formatKlines(klines5m),
     },
     oi,
   };
@@ -537,7 +592,13 @@ export async function fetchScanData(symbol: string) {
     const res = await fetch(`/api/scan-data?symbol=${encodeURIComponent(symbol)}`);
     const contentType = res.headers.get('content-type') || '';
     if (res.ok && contentType.includes('application/json')) {
-      return await res.json();
+      const data = await res.json();
+      if (data && data.candles5m) {
+        return {
+          candles5m: formatKlines(data.candles5m || []),
+          oi: data.oi,
+        };
+      }
     }
   } catch (e) {
     // fallback
@@ -549,7 +610,7 @@ export async function fetchScanData(symbol: string) {
   ]);
 
   return {
-    candles5m,
+    candles5m: formatKlines(candles5m),
     oi,
   };
 }

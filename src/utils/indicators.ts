@@ -2,18 +2,33 @@ import { Candle, PivotLevels, MarketStructurePoint, TradeStrategy } from '../typ
 
 export function formatKlines(data: any[]): Candle[] {
   if (!Array.isArray(data)) return [];
-  return data.map(x => ({
-    time: Number(x[0]),
-    open: Number(x[1]),
-    high: Number(x[2]),
-    low: Number(x[3]),
-    close: Number(x[4]),
-    volume: Number(x[5]),
-  }));
+  return data
+    .filter(x => x !== null && x !== undefined)
+    .map(x => {
+      if (typeof x === 'object' && !Array.isArray(x) && ('open' in x || 'close' in x)) {
+        return {
+          time: Number(x.time || x.openTime || 0),
+          open: Number(x.open || 0),
+          high: Number(x.high || 0),
+          low: Number(x.low || 0),
+          close: Number(x.close || 0),
+          volume: Number(x.volume || 0),
+        };
+      }
+      return {
+        time: Number(x[0] || 0),
+        open: Number(x[1] || 0),
+        high: Number(x[2] || 0),
+        low: Number(x[3] || 0),
+        close: Number(x[4] || 0),
+        volume: Number(x[5] || 0),
+      };
+    })
+    .filter(c => !isNaN(c.close) && c.close > 0 && !isNaN(c.high) && !isNaN(c.low));
 }
 
 export function calculateEma(candles: Candle[], period: number): number | null {
-  if (!candles || candles.length < period) return null;
+  if (!candles || candles.length < 3) return null;
   const k = 2 / (period + 1);
   let ema = candles[0].close;
   for (let i = 1; i < candles.length; i++) {
@@ -22,8 +37,25 @@ export function calculateEma(candles: Candle[], period: number): number | null {
   return ema;
 }
 
+export function calculateEmaSeries(candles: Candle[], period: number): (number | null)[] {
+  if (!candles || !candles.length) return [];
+  const k = 2 / (period + 1);
+  const result: (number | null)[] = [];
+  let ema = candles[0].close;
+  
+  for (let i = 0; i < candles.length; i++) {
+    if (i === 0) {
+      ema = candles[0].close;
+    } else {
+      ema = candles[i].close * k + ema * (1 - k);
+    }
+    result.push(ema);
+  }
+  return result;
+}
+
 export function calculateEmaFromNumbers(values: number[], period: number): number | null {
-  if (!values || values.length < period) return null;
+  if (!values || values.length < 3) return null;
   const k = 2 / (period + 1);
   let ema = values[0];
   for (let i = 1; i < values.length; i++) {
@@ -33,24 +65,26 @@ export function calculateEmaFromNumbers(values: number[], period: number): numbe
 }
 
 export function calculateRsi(candles: Candle[], period: number = 14): number | null {
-  if (!candles || candles.length < period + 1) return null;
+  if (!candles || candles.length < 5) return null;
+  const p = Math.min(period, candles.length - 1);
+  if (p <= 0) return null;
   const closes = candles.map(x => x.close);
   let gain = 0;
   let loss = 0;
 
-  for (let i = 1; i <= period; i++) {
+  for (let i = 1; i <= p; i++) {
     const diff = closes[i] - closes[i - 1];
     gain += Math.max(diff, 0);
     loss += Math.max(-diff, 0);
   }
 
-  gain /= period;
-  loss /= period;
+  gain /= p;
+  loss /= p;
 
-  for (let i = period + 1; i < closes.length; i++) {
+  for (let i = p + 1; i < closes.length; i++) {
     const diff = closes[i] - closes[i - 1];
-    gain = (gain * (period - 1) + Math.max(diff, 0)) / period;
-    loss = (loss * (period - 1) + Math.max(-diff, 0)) / period;
+    gain = (gain * (p - 1) + Math.max(diff, 0)) / p;
+    loss = (loss * (p - 1) + Math.max(-diff, 0)) / p;
   }
 
   if (loss === 0) return 100;
@@ -59,7 +93,7 @@ export function calculateRsi(candles: Candle[], period: number = 14): number | n
 }
 
 export function calculateMacd(candles: Candle[]): number | null {
-  if (!candles || candles.length < 26) return null;
+  if (!candles || candles.length < 8) return null;
   const closes = candles.map(x => x.close);
   const ema12 = calculateEmaFromNumbers(closes, 12);
   const ema26 = calculateEmaFromNumbers(closes, 26);
@@ -68,12 +102,17 @@ export function calculateMacd(candles: Candle[]): number | null {
 }
 
 export function calculateRvol(candles: Candle[], period: number = 20): number | null {
-  if (!candles || candles.length < period + 1) return null;
-  const slice = candles.slice(-(period + 1));
-  const baseVolumeSum = slice.slice(0, period).reduce((acc, c) => acc + c.volume, 0);
-  const avgVolume = baseVolumeSum / period;
-  if (avgVolume === 0) return null;
-  const lastVolume = slice[period].volume;
+  if (!candles || candles.length < 3) return null;
+  const len = candles.length;
+  const count = Math.min(period, len - 1);
+  if (count <= 0) {
+    return 1.0;
+  }
+  const history = candles.slice(len - 1 - count, len - 1);
+  const baseVolumeSum = history.reduce((acc, c) => acc + (Number(c.volume) || 0), 0);
+  const avgVolume = baseVolumeSum / count;
+  if (avgVolume <= 0) return 1.0;
+  const lastVolume = Number(candles[len - 1].volume) || 0;
   return lastVolume / avgVolume;
 }
 
@@ -82,24 +121,41 @@ export function calculatePivotLevels(candles: Candle[], currentPrice: number): P
     return { r1: null, r2: null, r3: null, s1: null, s2: null, s3: null };
   }
 
+  const p = currentPrice || (candles.length ? candles[candles.length - 1].close : 0);
+  if (p <= 0) return { r1: null, r2: null, r3: null, s1: null, s2: null, s3: null };
+
+  const lastCandle = candles[candles.length - 1];
+  const prevCandle = candles.length > 1 ? candles[candles.length - 2] : lastCandle;
+
+  // Classic Floor Trader Pivots
+  const pp = (prevCandle.high + prevCandle.low + prevCandle.close) / 3;
+  const classicR1 = 2 * pp - prevCandle.low;
+  const classicS1 = 2 * pp - prevCandle.high;
+  const classicR2 = pp + (prevCandle.high - prevCandle.low);
+  const classicS2 = pp - (prevCandle.high - prevCandle.low);
+  const classicR3 = prevCandle.high + 2 * (pp - prevCandle.low);
+  const classicS3 = prevCandle.low - 2 * (prevCandle.high - pp);
+
+  // Dynamic Swing Highs/Lows
   const highsAbove = candles
     .map(x => x.high)
-    .filter(h => h > currentPrice)
+    .filter(h => h > p * 1.0005)
     .sort((a, b) => a - b);
 
   const lowsBelow = candles
     .map(x => x.low)
-    .filter(l => l < currentPrice)
+    .filter(l => l < p * 0.9995)
     .sort((a, b) => b - a);
 
-  return {
-    r1: highsAbove[0] ?? null,
-    r2: highsAbove[1] ?? null,
-    r3: highsAbove[2] ?? null,
-    s1: lowsBelow[0] ?? null,
-    s2: lowsBelow[1] ?? null,
-    s3: lowsBelow[2] ?? null,
-  };
+  const r1 = highsAbove[0] ?? (classicR1 > p ? classicR1 : p * 1.015);
+  const r2 = highsAbove[1] ?? (classicR2 > r1 ? classicR2 : r1 * 1.02);
+  const r3 = highsAbove[2] ?? (classicR3 > r2 ? classicR3 : r2 * 1.025);
+
+  const s1 = lowsBelow[0] ?? (classicS1 < p ? classicS1 : p * 0.985);
+  const s2 = lowsBelow[1] ?? (classicS2 < s1 ? classicS2 : s1 * 0.98);
+  const s3 = lowsBelow[2] ?? (classicS3 < s2 ? classicS3 : s2 * 0.975);
+
+  return { r1, r2, r3, s1, s2, s3 };
 }
 
 export function calculateMarketStructure(candles: Candle[], lookback: number = 3): MarketStructurePoint[] {

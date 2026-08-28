@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { ScannerItem } from '../types';
-import { calculateRsi, calculateRvol, calculateBollingerBands, playAudioAlert, formatKlines } from '../utils/indicators';
+import { calculateRsi, calculateRvol, calculateBollingerBands, playAudioAlert } from '../utils/indicators';
 import { fetchKlinesWithFallback, fetchTickerWithFallback } from '../utils/marketService';
 import {
   Radio,
   RefreshCw,
-  TrendingUp,
-  TrendingDown,
   Volume2,
   VolumeX,
   Zap,
@@ -14,32 +12,70 @@ import {
   Layers,
   ArrowUpRight,
   ArrowDownRight,
-  Flame,
   Search,
+  Cpu,
+  Coins,
+  ShieldCheck,
+  Rocket,
+  Grid,
 } from 'lucide-react';
 
-const TOP_WATCHLIST = [
-  'BTCUSDT',
-  'ETHUSDT',
-  'SOLUSDT',
-  'BNBUSDT',
-  'XRPUSDT',
-  'DOGEUSDT',
-  'ADAUSDT',
-  'AVAXUSDT',
-  'LINKUSDT',
-  'SUIUSDT',
-  'NEARUSDT',
-  'PEPEUSDT',
-  'WIFUSDT',
-  'APTUSDT',
-  'ARBUSDT',
-  'OPUSDT',
-  'TIAUSDT',
-  'INJUSDT',
-  'RENDERUSDT',
-  'FETUSDT',
+export interface CategoryDef {
+  id: string;
+  name: string;
+  shortName: string;
+  icon: any;
+  color: string;
+  symbols: string[];
+}
+
+export const SCANNER_CATEGORIES: CategoryDef[] = [
+  {
+    id: 'L1_MAJORS',
+    name: '1. Layer 1 & Top Caps',
+    shortName: 'Layer 1',
+    icon: Coins,
+    color: 'text-amber-400 border-amber-500/30 bg-amber-500/10',
+    symbols: ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT', 'ADAUSDT', 'AVAXUSDT', 'SUIUSDT', 'NEARUSDT'],
+  },
+  {
+    id: 'AI_DATA',
+    name: '2. IA & Computación Descentralizada',
+    shortName: 'IA & Big Data',
+    icon: Cpu,
+    color: 'text-cyan-400 border-cyan-500/30 bg-cyan-500/10',
+    symbols: ['TAOUSDT', 'RENDERUSDT', 'FETUSDT', 'NEARUSDT', 'ICPUSDT', 'WLDUSDT', 'ARKMUSDT'],
+  },
+  {
+    id: 'DEFI_RWA',
+    name: '3. DeFi & RWA (Real World Assets)',
+    shortName: 'DeFi & RWA',
+    icon: ShieldCheck,
+    color: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10',
+    symbols: ['LINKUSDT', 'UNIUSDT', 'AAVEUSDT', 'PENDLEUSDT', 'INJUSDT', 'ONDOUSDT', 'CRVUSDT'],
+  },
+  {
+    id: 'MEMES_MOMENTUM',
+    name: '4. Meme Coins & Alta Beta',
+    shortName: 'Memes & Beta',
+    icon: Rocket,
+    color: 'text-pink-400 border-pink-500/30 bg-pink-500/10',
+    symbols: ['DOGEUSDT', 'PEPEUSDT', 'WIFUSDT', 'SHIBUSDT', 'BONKUSDT', 'FLOKIUSDT'],
+  },
+  {
+    id: 'L2_MODULAR',
+    name: '5. Layer 2 & Infraestructura Modular',
+    shortName: 'Layer 2 & Modular',
+    icon: Grid,
+    color: 'text-indigo-400 border-indigo-500/30 bg-indigo-500/10',
+    symbols: ['ARBUSDT', 'OPUSDT', 'TIAUSDT', 'APTUSDT', 'SEIUSDT', 'STRKUSDT'],
+  },
 ];
+
+// All distinct symbols
+const ALL_WATCHLIST = Array.from(
+  new Set(SCANNER_CATEGORIES.flatMap(c => c.symbols))
+);
 
 interface MarketScannerTabProps {
   onSelectSymbol: (symbol: string) => void;
@@ -52,6 +88,7 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
 }) => {
   const [items, setItems] = useState<ScannerItem[]>([]);
   const [isScanning, setIsScanning] = useState<boolean>(false);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('ALL');
   const [filterMode, setFilterMode] = useState<'ALL' | 'LONG' | 'SHORT' | 'VOL' | 'SQUEEZE'>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
@@ -131,8 +168,8 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
     const results: ScannerItem[] = [];
 
     // Scan in chunks of 4 for speed and API stability
-    for (let i = 0; i < TOP_WATCHLIST.length; i += 4) {
-      const chunk = TOP_WATCHLIST.slice(i, i + 4);
+    for (let i = 0; i < ALL_WATCHLIST.length; i += 4) {
+      const chunk = ALL_WATCHLIST.slice(i, i + 4);
       const chunkRes = await Promise.all(chunk.map(scanSinglePair));
       chunkRes.forEach(r => {
         if (r) results.push(r);
@@ -148,22 +185,36 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
     if (strongSignals.length > 0 && soundEnabled) {
       playAudioAlert('bullish');
     }
-
     if (onLogMessage) {
       onLogMessage(`Escáner completado: ${results.length} pares analizados en tiempo real.`, 'info');
     }
   };
 
-  // Run on mount
   useEffect(() => {
     runFullScan();
-    // Auto refresh every 45s
-    const interval = setInterval(runFullScan, 45000);
+    const interval = setInterval(() => {
+      runFullScan();
+    }, 45000); // scan every 45s
+
     return () => clearInterval(interval);
   }, []);
 
+  // Filter items by category, mode, search
   const filteredItems = items.filter(item => {
-    if (searchQuery && !item.symbol.includes(searchQuery.toUpperCase())) return false;
+    // Category match
+    if (selectedCategoryId !== 'ALL') {
+      const cat = SCANNER_CATEGORIES.find(c => c.id === selectedCategoryId);
+      if (cat && !cat.symbols.includes(item.symbol)) {
+        return false;
+      }
+    }
+
+    // Search query
+    if (searchQuery && !item.symbol.toLowerCase().includes(searchQuery.toLowerCase())) {
+      return false;
+    }
+
+    // Filter mode
     if (filterMode === 'LONG') return item.signal === 'LONG';
     if (filterMode === 'SHORT') return item.signal === 'SHORT';
     if (filterMode === 'VOL') return item.rvol >= 2.0;
@@ -171,61 +222,52 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
     return true;
   });
 
-  const fmtPrice = (p: number) => {
-    if (p >= 1000) return p.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    if (p >= 1) return p.toFixed(3);
-    return p.toFixed(5);
-  };
-
-  const fmtVol = (v: number) => {
-    if (v >= 1e9) return `$${(v / 1e9).toFixed(2)}B`;
-    if (v >= 1e6) return `$${(v / 1e6).toFixed(1)}M`;
-    return `$${(v / 1e3).toFixed(0)}K`;
-  };
+  const fmt = (n: number, dec: number = 2) =>
+    n.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
 
   return (
-    <div className="space-y-4">
-      {/* Top Header & Control Bar */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-              <Radio className="w-5 h-5 text-amber-400" />
-            </div>
-            <div>
-              <h2 className="text-xs uppercase tracking-widest text-slate-200 font-bold m-0 flex items-center gap-2">
-                Escáner Cuantitativo Multi-Par (Binance Futures)
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-              </h2>
-              <p className="text-[11px] text-slate-400 m-0">
-                Monitoreo algorítmico continuo de RVOL &gt; 2x, Squeeze de volatilidad y divergencias RSI.
-              </p>
+    <div className="space-y-6">
+      {/* 1. Header with Live Status & Controls */}
+      <div className="border border-slate-800 bg-slate-900/90 rounded-xl p-5 shadow-lg relative overflow-hidden">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 pb-4 border-b border-slate-800">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-400">
+                <Radio className="w-5 h-5 animate-pulse" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-bold text-slate-100 uppercase tracking-wider font-mono">
+                    Escáner Multi-Temporal de Binance Futures
+                  </h2>
+                  <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-mono font-bold px-2 py-0.5 rounded-sm uppercase tracking-wider">
+                    {items.length} PARES ACTIVOS
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Detección en tiempo real de RVOL Institucional, Squeeze de Volatilidad, RSI Divergencias y Señales en 5 Categorías.
+                </p>
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Audio Toggle */}
+          <div className="flex items-center gap-3">
             <button
-              onClick={() => {
-                setSoundEnabled(!soundEnabled);
-                playAudioAlert('click');
-              }}
-              className={`p-2 rounded-lg border transition-colors cursor-pointer text-xs flex items-center gap-1.5 ${
+              onClick={() => setSoundEnabled(!soundEnabled)}
+              className={`p-2 rounded-lg border text-xs font-mono flex items-center gap-1.5 cursor-pointer transition-colors ${
                 soundEnabled
-                  ? 'bg-slate-950 border-amber-500/40 text-amber-300'
-                  : 'bg-slate-950 border-slate-800 text-slate-500'
+                  ? 'bg-amber-500/10 border-amber-500/40 text-amber-300'
+                  : 'bg-slate-800 border-slate-700 text-slate-500'
               }`}
-              title={soundEnabled ? 'Alertas sonoras activadas' : 'Alertas sonoras silenciadas'}
+              title={soundEnabled ? 'Alertas de audio activadas' : 'Alertas silenciadas'}
             >
-              {soundEnabled ? <Volume2 className="w-4 h-4 text-amber-400" /> : <VolumeX className="w-4 h-4" />}
-              <span className="text-[10px] font-mono uppercase">{soundEnabled ? 'Audio ON' : 'Audio OFF'}</span>
+              {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </button>
 
-            {/* Scan Button */}
             <button
               onClick={runFullScan}
               disabled={isScanning}
-              className="bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 text-xs font-bold uppercase tracking-wider px-3.5 py-2 rounded-lg flex items-center gap-1.5 cursor-pointer transition-all shadow-sm"
+              className="bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 text-xs px-3.5 py-2 rounded-lg font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin' : ''}`} />
               <span>{isScanning ? 'Escaneando...' : 'Escanear Ahora'}</span>
@@ -233,207 +275,273 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
           </div>
         </div>
 
-        {/* Filter Controls & Search */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800/80">
-          <div className="flex flex-wrap items-center gap-1.5 text-xs">
-            <span className="text-[10px] text-slate-500 font-mono uppercase mr-1 flex items-center gap-1">
-              <Filter className="w-3 h-3" /> Filtro:
+        {/* 2. The 5 Categories Selector Bar */}
+        <div className="mt-4 pt-1">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] font-mono uppercase tracking-widest text-slate-400 font-bold flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5 text-amber-400" /> 5 Categorías de Mercado (Binance Futures)
             </span>
-            <button
-              onClick={() => setFilterMode('ALL')}
-              className={`px-2.5 py-1 rounded-lg font-semibold text-[11px] transition-colors cursor-pointer ${
-                filterMode === 'ALL'
-                  ? 'bg-amber-500 text-slate-950 font-bold'
-                  : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800'
-              }`}
-            >
-              Todos ({items.length})
-            </button>
-
-            <button
-              onClick={() => setFilterMode('LONG')}
-              className={`px-2.5 py-1 rounded-lg font-semibold text-[11px] transition-colors cursor-pointer ${
-                filterMode === 'LONG'
-                  ? 'bg-emerald-500 text-slate-950 font-bold'
-                  : 'bg-slate-950 text-emerald-400 hover:text-emerald-300 border border-slate-800'
-              }`}
-            >
-              🟢 Señales LONG ({items.filter(i => i.signal === 'LONG').length})
-            </button>
-
-            <button
-              onClick={() => setFilterMode('SHORT')}
-              className={`px-2.5 py-1 rounded-lg font-semibold text-[11px] transition-colors cursor-pointer ${
-                filterMode === 'SHORT'
-                  ? 'bg-red-500 text-slate-950 font-bold'
-                  : 'bg-slate-950 text-red-400 hover:text-red-300 border border-slate-800'
-              }`}
-            >
-              🔴 Señales SHORT ({items.filter(i => i.signal === 'SHORT').length})
-            </button>
-
-            <button
-              onClick={() => setFilterMode('VOL')}
-              className={`px-2.5 py-1 rounded-lg font-semibold text-[11px] transition-colors cursor-pointer ${
-                filterMode === 'VOL'
-                  ? 'bg-amber-500 text-slate-950 font-bold'
-                  : 'bg-slate-950 text-amber-300 hover:text-amber-200 border border-slate-800'
-              }`}
-            >
-              ⚡ RVOL Inusual &gt; 2x ({items.filter(i => i.rvol >= 2.0).length})
-            </button>
-
-            <button
-              onClick={() => setFilterMode('SQUEEZE')}
-              className={`px-2.5 py-1 rounded-lg font-semibold text-[11px] transition-colors cursor-pointer ${
-                filterMode === 'SQUEEZE'
-                  ? 'bg-purple-500 text-white font-bold'
-                  : 'bg-slate-950 text-purple-300 hover:text-purple-200 border border-slate-800'
-              }`}
-            >
-              🎯 Squeeze Bandas ({items.filter(i => i.bollingerSqueeze).length})
-            </button>
+            <span className="text-[10px] text-slate-500 font-mono">
+              Filtra por sector para detectar rotación de capital
+            </span>
           </div>
 
-          {/* Quick Search */}
-          <div className="relative w-full sm:w-44">
-            <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+            {/* All categories pill */}
+            <button
+              onClick={() => setSelectedCategoryId('ALL')}
+              className={`p-2.5 rounded-lg border text-xs font-mono text-left transition-all cursor-pointer flex flex-col justify-between ${
+                selectedCategoryId === 'ALL'
+                  ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold shadow-md shadow-amber-500/10'
+                  : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] uppercase font-bold">TODAS</span>
+                <span className="text-[10px] opacity-70">({ALL_WATCHLIST.length})</span>
+              </div>
+              <span className="text-[11px] truncate">Universo Completo</span>
+            </button>
+
+            {/* The 5 Individual Categories */}
+            {SCANNER_CATEGORIES.map(cat => {
+              const Icon = cat.icon;
+              const isSelected = selectedCategoryId === cat.id;
+              const hasTao = cat.symbols.includes('TAOUSDT');
+
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => setSelectedCategoryId(cat.id)}
+                  className={`p-2.5 rounded-lg border text-xs font-mono text-left transition-all cursor-pointer flex flex-col justify-between relative overflow-hidden ${
+                    isSelected
+                      ? 'bg-slate-800 border-amber-500 text-white shadow-md'
+                      : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-200">
+                      <Icon className="w-3.5 h-3.5 text-amber-400" />
+                      <span>{cat.shortName}</span>
+                    </span>
+                    <span className="text-[10px] text-slate-400">({cat.symbols.length})</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1">
+                    <span className="truncate">{cat.symbols.slice(0, 3).map(s => s.replace('USDT', '')).join(', ')}...</span>
+                    {hasTao && (
+                      <span className="bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[8px] font-bold px-1 rounded">
+                        TAO
+                      </span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 3. Signal Filter Chips & Search Bar */}
+        <div className="mt-4 pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+          <div className="flex flex-wrap items-center gap-1.5 text-xs font-mono">
+            <span className="text-[10px] text-slate-500 uppercase tracking-widest mr-1 flex items-center gap-1">
+              <Filter className="w-3 h-3" /> Filtro Señal:
+            </span>
+
+            {(
+              [
+                { id: 'ALL', label: 'Todos' },
+                { id: 'LONG', label: '🟢 Longs Fuertes' },
+                { id: 'SHORT', label: '🔴 Shorts Fuertes' },
+                { id: 'VOL', label: '⚡ RVOL ≥ 2.0x' },
+                { id: 'SQUEEZE', label: '🎯 Bollinger Squeeze' },
+              ] as const
+            ).map(btn => (
+              <button
+                key={btn.id}
+                onClick={() => setFilterMode(btn.id)}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer ${
+                  filterMode === btn.id
+                    ? 'bg-slate-800 text-amber-300 border-amber-500/50 shadow-sm'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {btn.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="relative w-full sm:w-56">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
               type="text"
+              placeholder="Buscar símbolo (ej: TAO, BTC)..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Buscar par..."
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-2.5 py-1.5 text-xs text-white uppercase font-mono focus:border-amber-400 focus:outline-none placeholder:text-slate-600"
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs font-mono text-white placeholder:text-slate-600 focus:outline-none focus:border-amber-400"
             />
           </div>
         </div>
       </div>
 
-      {/* Results Table */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs font-mono">
-            <thead className="bg-slate-950/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
-              <tr>
-                <th className="py-3 px-4">Par</th>
-                <th className="py-3 px-3">Precio</th>
-                <th className="py-3 px-3">Var 24h</th>
-                <th className="py-3 px-3">Volumen 24h</th>
-                <th className="py-3 px-3">RVOL (15m)</th>
-                <th className="py-3 px-3">RSI 15m / 1h</th>
-                <th className="py-3 px-3">Tendencia</th>
-                <th className="py-3 px-3">Señal Algorítmica</th>
-                <th className="py-3 px-4 text-right">Acción</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60">
-              {filteredItems.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="py-8 text-center text-slate-500">
-                    {isScanning ? 'Analizando mercado en vivo...' : 'No se encontraron pares con el filtro actual.'}
-                  </td>
-                </tr>
-              ) : (
-                filteredItems.map(item => {
-                  const isPositive = item.change24h >= 0;
-                  return (
-                    <tr
-                      key={item.symbol}
-                      className="hover:bg-slate-800/40 transition-colors group cursor-pointer"
-                      onClick={() => onSelectSymbol(item.symbol)}
+      {/* 4. Scanner Results Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filteredItems.map(item => {
+          const isTao = item.symbol === 'TAOUSDT';
+          const isBull = item.signal === 'LONG';
+          const isBear = item.signal === 'SHORT';
+          const isSqueeze = item.bollingerSqueeze;
+          const isHighVol = item.rvol >= 2.0;
+
+          return (
+            <div
+              key={item.symbol}
+              className={`bg-slate-900/90 border rounded-xl p-4 transition-all hover:border-amber-500/60 shadow-md relative overflow-hidden flex flex-col justify-between ${
+                isTao ? 'border-cyan-500/60 ring-1 ring-cyan-500/30' : 'border-slate-800'
+              }`}
+            >
+              {/* Top Accent bar */}
+              <div
+                className={`absolute top-0 left-0 w-full h-1 ${
+                  isBull ? 'bg-emerald-500' : isBear ? 'bg-red-500' : isSqueeze ? 'bg-amber-400' : 'bg-slate-700'
+                }`}
+              ></div>
+
+              <div>
+                {/* Header: Symbol, Price & Change */}
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-bold font-mono text-white tracking-wide">
+                        {item.symbol}
+                      </span>
+                      {isTao && (
+                        <span className="bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[9px] font-mono font-bold px-1.5 py-0.2 rounded">
+                          IA POSICIÓN
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-slate-400 font-mono block mt-0.5">
+                      {item.trend === 'Alcista' ? 'Tendencia 1H: Alcista' : item.trend === 'Bajista' ? 'Tendencia 1H: Bajista' : 'Tendencia 1H: Lateral'}
+                    </span>
+                  </div>
+
+                  <div className="text-right">
+                    <div className="text-sm font-bold font-mono text-white">
+                      ${fmt(item.price, item.price > 1000 ? 2 : item.price > 1 ? 4 : 6)}
+                    </div>
+                    <div
+                      className={`text-[11px] font-mono font-bold flex items-center justify-end gap-0.5 ${
+                        item.change24h >= 0 ? 'text-emerald-400' : 'text-red-400'
+                      }`}
                     >
-                      <td className="py-3 px-4 font-bold text-white flex items-center gap-2">
-                        <span className="text-amber-400">{item.symbol}</span>
-                        {item.bollingerSqueeze && (
-                          <span className="bg-purple-950 border border-purple-500/40 text-purple-300 text-[9px] px-1 rounded">
-                            SQZ
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3 px-3 text-slate-100 font-semibold">${fmtPrice(item.price)}</td>
-                      <td className={`py-3 px-3 font-semibold ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
-                        {isPositive ? `+${item.change24h.toFixed(2)}%` : `${item.change24h.toFixed(2)}%`}
-                      </td>
-                      <td className="py-3 px-3 text-slate-400">{fmtVol(item.volume24h)}</td>
-                      <td className="py-3 px-3">
-                        <span
-                          className={`px-1.5 py-0.5 rounded font-bold ${
-                            item.rvol >= 2.5
-                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                              : item.rvol >= 1.5
-                              ? 'text-slate-200'
-                              : 'text-slate-400'
-                          }`}
-                        >
-                          {item.rvol}x
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-slate-300">
-                        <span
-                          className={`font-semibold ${
-                            item.rsi15m < 30 ? 'text-emerald-400' : item.rsi15m > 70 ? 'text-red-400' : 'text-slate-300'
-                          }`}
-                        >
-                          {item.rsi15m}
-                        </span>
-                        <span className="text-slate-600 mx-1">/</span>
-                        <span className="text-slate-400">{item.rsi1h}</span>
-                      </td>
-                      <td className="py-3 px-3">
-                        <span
-                          className={`text-[10px] uppercase font-bold ${
-                            item.trend === 'Alcista'
-                              ? 'text-emerald-400'
-                              : item.trend === 'Bajista'
-                              ? 'text-red-400'
-                              : 'text-slate-400'
-                          }`}
-                        >
-                          {item.trend}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3">
-                        {item.signal === 'LONG' && (
-                          <span className="bg-emerald-950 border border-emerald-500/40 text-emerald-300 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider inline-flex items-center gap-1">
-                            <ArrowUpRight className="w-3 h-3" /> LONG (★{item.signalStrength})
-                          </span>
-                        )}
-                        {item.signal === 'SHORT' && (
-                          <span className="bg-red-950 border border-red-500/40 text-red-300 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider inline-flex items-center gap-1">
-                            <ArrowDownRight className="w-3 h-3" /> SHORT (★{item.signalStrength})
-                          </span>
-                        )}
-                        {item.signal === 'SQUEEZE' && (
-                          <span className="bg-purple-950 border border-purple-500/40 text-purple-300 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">
-                            ⚡ Squeeze Inminente
-                          </span>
-                        )}
-                        {item.signal === 'VOL_SPIKE' && (
-                          <span className="bg-amber-950 border border-amber-500/40 text-amber-300 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">
-                            🔥 RVOL Spike
-                          </span>
-                        )}
-                        {item.signal === 'NEUTRAL' && <span className="text-slate-500">En Rango</span>}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          onClick={e => {
-                            e.stopPropagation();
-                            onSelectSymbol(item.symbol);
-                          }}
-                          className="bg-slate-950 hover:bg-amber-500 hover:text-slate-950 text-slate-300 text-[10px] px-2.5 py-1 rounded border border-slate-800 font-bold uppercase tracking-wider transition-all cursor-pointer"
-                        >
-                          Analizar
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                      {item.change24h >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                      <span>{item.change24h >= 0 ? '+' : ''}{fmt(item.change24h, 2)}%</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Metrics Grid */}
+                <div className="grid grid-cols-3 gap-2 bg-slate-950/70 border border-slate-800/80 rounded-lg p-2.5 text-xs font-mono mb-3">
+                  <div>
+                    <span className="text-[9px] text-slate-400 uppercase block">RVOL 15m</span>
+                    <span
+                      className={`font-bold block text-[11px] ${
+                        item.rvol >= 2.0
+                          ? 'text-amber-400 font-extrabold'
+                          : item.rvol >= 1.4
+                          ? 'text-emerald-400'
+                          : 'text-slate-300'
+                      }`}
+                    >
+                      {item.rvol}x
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-[9px] text-slate-400 uppercase block">RSI 15m</span>
+                    <span
+                      className={`font-bold block text-[11px] ${
+                        item.rsi15m <= 30
+                          ? 'text-emerald-400'
+                          : item.rsi15m >= 70
+                          ? 'text-red-400'
+                          : 'text-slate-300'
+                      }`}
+                    >
+                      {item.rsi15m}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-[9px] text-slate-400 uppercase block">RSI 1H</span>
+                    <span className="font-bold text-slate-300 block text-[11px]">{item.rsi1h}</span>
+                  </div>
+                </div>
+
+                {/* Algorithmic Signal Tag */}
+                <div className="flex items-center justify-between text-xs font-mono mb-3">
+                  <span className="text-[10px] text-slate-400">Algoritmo:</span>
+                  <div className="flex items-center gap-1.5">
+                    {isBull && (
+                      <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold px-2 py-0.5 rounded">
+                        LONG SIGNAL (★{item.signalStrength})
+                      </span>
+                    )}
+                    {isBear && (
+                      <span className="bg-red-500/20 text-red-300 border border-red-500/40 text-[10px] font-bold px-2 py-0.5 rounded">
+                        SHORT SIGNAL (★{item.signalStrength})
+                      </span>
+                    )}
+                    {isSqueeze && !isBull && !isBear && (
+                      <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold px-2 py-0.5 rounded">
+                        BB SQUEEZE
+                      </span>
+                    )}
+                    {isHighVol && !isBull && !isBear && !isSqueeze && (
+                      <span className="bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[10px] font-bold px-2 py-0.5 rounded">
+                        VOL SPIKE
+                      </span>
+                    )}
+                    {!isBull && !isBear && !isSqueeze && !isHighVol && (
+                      <span className="text-slate-500 text-[10px]">NEUTRAL</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Button: 1-Click Load into Main Dashboard */}
+              <button
+                onClick={() => {
+                  onSelectSymbol(item.symbol);
+                  if (onLogMessage) {
+                    onLogMessage(`Cargando ${item.symbol} en panel de análisis y gráfico en vivo...`, 'info');
+                  }
+                }}
+                className="w-full bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-slate-200 border border-slate-700 hover:border-amber-400 py-2 px-3 rounded-lg text-xs font-bold font-mono uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-98"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                <span>Analizar & Operar {item.symbol}</span>
+              </button>
+            </div>
+          );
+        })}
       </div>
+
+      {filteredItems.length === 0 && !isScanning && (
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-12 text-center text-slate-400 font-mono text-xs space-y-2">
+          <p>No se encontraron pares con los criterios seleccionados en este momento.</p>
+          <button
+            onClick={() => {
+              setFilterMode('ALL');
+              setSelectedCategoryId('ALL');
+              setSearchQuery('');
+            }}
+            className="text-amber-400 underline cursor-pointer"
+          >
+            Restablecer todos los filtros
+          </button>
+        </div>
+      )}
     </div>
   );
 };

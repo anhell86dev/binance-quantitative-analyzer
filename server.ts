@@ -280,17 +280,59 @@ async function fetchTickerWithFallback(symbol: string) {
   throw new Error(`No se pudo obtener el ticker 24hr para ${symbol}`);
 }
 
+// Helper to format raw klines from Binance API into uniform typed candle objects
+function formatRawKlines(data: any[]): Array<{ time: number; open: number; high: number; low: number; close: number; volume: number }> {
+  if (!Array.isArray(data)) return [];
+  return data
+    .filter(x => x !== null && x !== undefined)
+    .map((x: any) => {
+      if (typeof x === 'object' && !Array.isArray(x) && ('open' in x || 'close' in x)) {
+        return {
+          time: Number(x.time || x.openTime || 0),
+          open: Number(x.open || 0),
+          high: Number(x.high || 0),
+          low: Number(x.low || 0),
+          close: Number(x.close || 0),
+          volume: Number(x.volume || 0),
+        };
+      }
+      return {
+        time: Number(x[0] || 0),
+        open: Number(x[1] || 0),
+        high: Number(x[2] || 0),
+        low: Number(x[3] || 0),
+        close: Number(x[4] || 0),
+        volume: Number(x[5] || 0),
+      };
+    })
+    .filter(c => !isNaN(c.close) && c.close > 0 && !isNaN(c.high) && !isNaN(c.low));
+}
+
 // Resilient Open Interest fetcher
 async function fetchOpenInterestWithFallback(symbol: string) {
-  try {
-    const resp = await fetch(`${BINANCE_FUTURES_BASE}/fapi/v1/openInterest?symbol=${symbol}`);
-    if (resp.ok) {
-      return await resp.json();
+  const endpoints = [
+    `${BINANCE_FUTURES_BASE}/fapi/v1/openInterest?symbol=${symbol}`,
+    `https://fapi.binance.com/fapi/v1/openInterest?symbol=${symbol}`,
+  ];
+  for (const url of endpoints) {
+    try {
+      const resp = await fetch(url);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data && (data.openInterest || data.openInterest !== undefined)) {
+          return {
+            symbol: data.symbol || symbol,
+            openInterest: data.openInterest,
+            value: parseFloat(data.openInterest) || 0,
+            time: Number(data.time) || Date.now(),
+          };
+        }
+      }
+    } catch (e) {
+      // Ignore restricted location on openInterest
     }
-  } catch (e) {
-    // Ignore restricted location on openInterest
   }
-  return { openInterest: '0', symbol };
+  return { openInterest: '0', value: 0, symbol, time: Date.now() };
 }
 
 // ----------------- API ROUTES -----------------
@@ -377,13 +419,13 @@ app.get('/api/market-data', async (req: Request, res: Response) => {
 
     res.json({
       ticker,
-      klines1w,
+      klines1w: formatRawKlines(klines1w),
       candles: {
-        '1d': klines1d,
-        '4h': klines4h,
-        '1h': klines1h,
-        '15m': klines15m,
-        '5m': klines5m,
+        '1d': formatRawKlines(klines1d),
+        '4h': formatRawKlines(klines4h),
+        '1h': formatRawKlines(klines1h),
+        '15m': formatRawKlines(klines15m),
+        '5m': formatRawKlines(klines5m),
       },
       oi,
     });
@@ -402,7 +444,7 @@ app.get('/api/scan-data', async (req: Request, res: Response) => {
       fetchOpenInterestWithFallback(symbol),
     ]);
 
-    res.json({ candles5m, oi });
+    res.json({ candles5m: formatRawKlines(candles5m), oi });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -430,6 +472,8 @@ app.get('/api/binance/dashboard', async (req: Request, res: Response) => {
         configured: false,
         futuresAcc: { code: -2015, msg: 'API Key y Secret no configuradas. Agrega BINANCE_API_KEY y BINANCE_API_SECRET.' },
         spotAcc: null,
+        positions: [],
+        balance: { totalWalletBalance: 1000, availableBalance: 1000 },
         funding: [],
         trades: [],
       });
@@ -437,6 +481,7 @@ app.get('/api/binance/dashboard', async (req: Request, res: Response) => {
 
     let futuresAcc: any = null;
     let spotAcc: any = null;
+    let positionRisk: any[] = [];
     let funding: any[] = [];
     let trades: any[] = [];
 
@@ -445,6 +490,13 @@ app.get('/api/binance/dashboard', async (req: Request, res: Response) => {
       futuresAcc = await signedFuturesRequest('GET', '/fapi/v2/account', {}, credentials);
     } catch (e: any) {
       futuresAcc = { code: -1, msg: e.message };
+    }
+
+    // Real-time Position Risk for exact Mark Price & Liquidation Price
+    try {
+      positionRisk = await signedFuturesRequest('GET', '/fapi/v2/positionRisk', {}, credentials);
+    } catch (e: any) {
+      positionRisk = [];
     }
 
     // Spot Account
@@ -470,10 +522,28 @@ app.get('/api/binance/dashboard', async (req: Request, res: Response) => {
       }
     }
 
+    // Collect all open positions with non-zero positionAmt
+    let positions: any[] = [];
+    if (Array.isArray(positionRisk) && positionRisk.length > 0) {
+      positions = positionRisk.filter((p: any) => Math.abs(parseFloat(p.positionAmt || '0')) > 0);
+    } else if (futuresAcc && Array.isArray(futuresAcc.positions)) {
+      positions = futuresAcc.positions.filter((p: any) => Math.abs(parseFloat(p.positionAmt || '0')) > 0);
+    }
+
+    const walletBal = parseFloat(futuresAcc?.totalWalletBalance || '0');
+    const availBal = parseFloat(futuresAcc?.availableBalance || '0');
+
     res.json({
       configured: true,
       futuresAcc,
       spotAcc,
+      positions,
+      balance: {
+        totalWalletBalance: walletBal > 0 ? walletBal : 1000,
+        availableBalance: availBal > 0 ? availBal : 1000,
+        totalUnrealizedProfit: parseFloat(futuresAcc?.totalUnrealizedProfit || '0'),
+        totalMarginBalance: parseFloat(futuresAcc?.totalMarginBalance || '0'),
+      },
       funding: Array.isArray(funding) ? funding : [],
       trades: Array.isArray(trades) ? trades : [],
     });

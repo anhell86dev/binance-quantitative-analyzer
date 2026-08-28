@@ -736,6 +736,11 @@ export default function App() {
               openPositions={binanceData?.positions || []}
               apiKey={customApiKey}
               apiSecret={customApiSecret}
+              onSelectSymbol={sym => {
+                setActiveSymbol(sym);
+                setSymbolInput(sym);
+                runAutoAnalyze(sym);
+              }}
               onTradeExecuted={syncBinanceWallet}
               onLogMessage={addLog}
             />

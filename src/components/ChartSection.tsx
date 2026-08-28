@@ -1,14 +1,15 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Candle, MarketStructurePoint, TradeStrategy } from '../types';
-import { calculateMarketStructure } from '../utils/indicators';
+import { calculateMarketStructure, calculateEmaSeries } from '../utils/indicators';
 import {
-  Maximize2,
   ZoomIn,
   ZoomOut,
   RotateCcw,
   Calendar,
   Crosshair,
   TrendingUp,
+  Activity,
+  Layers,
 } from 'lucide-react';
 
 interface ChartSectionProps {
@@ -42,6 +43,7 @@ export const ChartSection: React.FC<ChartSectionProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartX, setDragStartX] = useState(0);
   const [showLevelsOverlay, setShowLevelsOverlay] = useState<boolean>(true);
+  const [showEmas, setShowEmas] = useState<boolean>(true);
 
   const activeCandles = useMemo(() => {
     if (candlesMap && candlesMap[selectedTf] && candlesMap[selectedTf]!.length > 0) {
@@ -55,6 +57,12 @@ export const ChartSection: React.FC<ChartSectionProps> = ({
     return activeCandles.slice(-120);
   }, [activeCandles]);
 
+  // Compute EMA Series on displayCandles
+  const ema9Series = useMemo(() => calculateEmaSeries(displayCandles, 9), [displayCandles]);
+  const ema21Series = useMemo(() => calculateEmaSeries(displayCandles, 21), [displayCandles]);
+  const ema50Series = useMemo(() => calculateEmaSeries(displayCandles, 50), [displayCandles]);
+  const ema200Series = useMemo(() => calculateEmaSeries(displayCandles, 200), [displayCandles]);
+
   const structurePoints = useMemo(() => {
     return calculateMarketStructure(displayCandles, 3);
   }, [displayCandles]);
@@ -65,22 +73,25 @@ export const ChartSection: React.FC<ChartSectionProps> = ({
     const container = containerRef.current;
     if (!canvas || !container || !displayCandles.length) return;
 
-    const width = container.clientWidth;
+    const width = container.clientWidth || 800;
     const height = 440;
-    canvas.width = width * window.devicePixelRatio;
-    canvas.height = height * window.devicePixelRatio;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, width, height);
 
-    const padding = { top: 25, right: 75, bottom: 35, left: 15 };
+    const padding = { top: 25, right: 80, bottom: 45, left: 15 };
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
+    const volumeHeight = 60; // Bottom zone for volume bars
+    const priceChartHeight = chartHeight - volumeHeight;
 
     // Determine high / low bounds
     const highs = displayCandles.map(c => c.high);
@@ -99,15 +110,18 @@ export const ChartSection: React.FC<ChartSectionProps> = ({
     minPrice -= priceRange * 0.05;
 
     const priceToY = (price: number) => {
-      return padding.top + (1 - (price - minPrice) / (maxPrice - minPrice)) * chartHeight;
+      return padding.top + (1 - (price - minPrice) / (maxPrice - minPrice)) * priceChartHeight;
     };
 
     const candleCount = displayCandles.length;
     const effectiveWidth = chartWidth * zoomLevel;
-    const candleWidth = Math.max(3, (effectiveWidth / candleCount) * 0.65);
+    const candleWidth = Math.max(2.5, (effectiveWidth / candleCount) * 0.65);
     const candleSpacing = effectiveWidth / candleCount;
 
-    // Draw grid lines
+    // Max Volume for bottom histogram
+    const maxVolume = Math.max(...displayCandles.map(c => Number(c.volume) || 0), 1);
+
+    // Draw background grid lines
     ctx.strokeStyle = '#1e293b';
     ctx.lineWidth = 1;
     const gridSteps = 5;
@@ -119,11 +133,51 @@ export const ChartSection: React.FC<ChartSectionProps> = ({
       ctx.lineTo(width - padding.right, y);
       ctx.stroke();
 
-      // Price labels
+      // Price labels on right axis
       ctx.fillStyle = '#94a3b8';
-      ctx.font = '11px "JetBrains Mono", monospace';
+      ctx.font = '10px "JetBrains Mono", monospace';
       ctx.textAlign = 'left';
-      ctx.fillText(p.toFixed(p > 1000 ? 1 : p > 1 ? 2 : 4), width - padding.right + 8, y + 4);
+      ctx.fillText(p.toFixed(p > 1000 ? 2 : p > 1 ? 4 : 6), width - padding.right + 8, y + 3);
+    }
+
+    // Draw Volume Bars
+    const volBaseY = height - padding.bottom;
+    displayCandles.forEach((c, i) => {
+      const x = padding.left + i * candleSpacing + candleSpacing / 2 + panOffset;
+      if (x < padding.left - 20 || x > width - padding.right + 20) return;
+      const volHeight = Math.min(volumeHeight - 5, ((Number(c.volume) || 0) / maxVolume) * (volumeHeight - 5));
+      const isGreen = c.close >= c.open;
+      ctx.fillStyle = isGreen ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)';
+      ctx.fillRect(x - candleWidth / 2, volBaseY - volHeight, candleWidth, volHeight);
+    });
+
+    // Draw EMAs on chart if enabled
+    if (showEmas) {
+      const drawEmaLine = (series: (number | null)[], color: string, widthPx: number = 1.2) => {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = widthPx;
+        ctx.beginPath();
+        let started = false;
+
+        series.forEach((val, i) => {
+          if (val === null || isNaN(val)) return;
+          const x = padding.left + i * candleSpacing + candleSpacing / 2 + panOffset;
+          if (x < padding.left - 30 || x > width - padding.right + 30) return;
+          const y = priceToY(val);
+          if (!started) {
+            ctx.moveTo(x, y);
+            started = true;
+          } else {
+            ctx.lineTo(x, y);
+          }
+        });
+        ctx.stroke();
+      };
+
+      drawEmaLine(ema9Series, '#06b6d4', 1.2);   // Cyan EMA 9
+      drawEmaLine(ema21Series, '#f59e0b', 1.4);  // Amber EMA 21
+      drawEmaLine(ema50Series, '#6366f1', 1.2);  // Indigo EMA 50
+      drawEmaLine(ema200Series, '#a855f7', 1.6); // Purple EMA 200
     }
 
     // Draw Strategy Target/Stop/Entry Overlays if enabled
@@ -239,13 +293,26 @@ export const ChartSection: React.FC<ChartSectionProps> = ({
 
       // Live price tag
       ctx.fillStyle = '#0284c7';
-      ctx.fillRect(width - padding.right, liveY - 9, 68, 18);
+      ctx.fillRect(width - padding.right, liveY - 9, 74, 18);
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 10px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(currentPrice.toFixed(currentPrice > 1000 ? 1 : 2), width - padding.right + 34, liveY + 3);
+      ctx.fillText(currentPrice.toFixed(currentPrice > 1000 ? 2 : 4), width - padding.right + 37, liveY + 3);
     }
-  }, [displayCandles, structurePoints, zoomLevel, panOffset, showLevelsOverlay, activeStrategy, currentPrice]);
+  }, [
+    displayCandles,
+    structurePoints,
+    ema9Series,
+    ema21Series,
+    ema50Series,
+    ema200Series,
+    zoomLevel,
+    panOffset,
+    showLevelsOverlay,
+    showEmas,
+    activeStrategy,
+    currentPrice,
+  ]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
@@ -278,7 +345,7 @@ export const ChartSection: React.FC<ChartSectionProps> = ({
               </span>
             </h2>
             <p className="text-[11px] text-slate-400 m-0">
-              Detección algorítmica de swing points (HH/HL/LH/LL) y niveles de ejecución.
+              Detección algorítmica de swing points (HH/HL/LH/LL), EMAs dinámicas y volumen.
             </p>
           </div>
         </div>
@@ -301,6 +368,20 @@ export const ChartSection: React.FC<ChartSectionProps> = ({
               </button>
             ))}
           </div>
+
+          {/* EMAs Toggle Button */}
+          <button
+            onClick={() => setShowEmas(!showEmas)}
+            className={`px-2.5 py-1.5 rounded-lg border text-xs font-mono flex items-center gap-1 cursor-pointer transition-colors ${
+              showEmas
+                ? 'bg-cyan-950/40 border-cyan-500/50 text-cyan-300'
+                : 'bg-slate-950 border-slate-800 text-slate-500'
+            }`}
+            title="Mostrar u ocultar líneas de medias móviles exponenciales (EMA 9, 21, 50, 200)"
+          >
+            <Activity className="w-3.5 h-3.5" />
+            <span className="text-[10px] font-bold">EMAs (9,21,50,200)</span>
+          </button>
 
           {/* Levels Overlay Toggle */}
           <button
@@ -354,7 +435,7 @@ export const ChartSection: React.FC<ChartSectionProps> = ({
         </div>
       </div>
 
-      {/* Interactive Canvas Canvas Area */}
+      {/* Interactive Canvas Area */}
       <div
         ref={containerRef}
         onMouseDown={handleMouseDown}
@@ -363,10 +444,17 @@ export const ChartSection: React.FC<ChartSectionProps> = ({
         onMouseLeave={handleMouseUp}
         className="w-full h-[440px] bg-slate-950 border border-slate-800 rounded-xl relative overflow-hidden cursor-grab active:cursor-grabbing shadow-inner"
       >
-        <canvas ref={canvasRef} className="block w-full h-full" />
+        {displayCandles.length === 0 ? (
+          <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 font-mono text-xs space-y-2">
+            <Layers className="w-8 h-8 text-amber-500/50 animate-bounce" />
+            <span>Sincronizando velas de {symbol} ({selectedTf.toUpperCase()})...</span>
+          </div>
+        ) : (
+          <canvas ref={canvasRef} className="block w-full h-full" />
+        )}
       </div>
 
-      {/* Legend */}
+      {/* Legend & Indicator References */}
       <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400 font-mono pt-1">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-1.5">
@@ -377,6 +465,25 @@ export const ChartSection: React.FC<ChartSectionProps> = ({
             <span className="w-2.5 h-2.5 rounded-sm bg-red-500"></span>
             <span className="text-[11px] text-slate-300">Vela Bajista</span>
           </div>
+
+          {/* EMA Legends */}
+          {showEmas && (
+            <div className="flex items-center gap-2 bg-slate-950 px-2 py-0.5 rounded border border-slate-800 text-[10px]">
+              <span className="flex items-center gap-1 text-cyan-400">
+                <span className="w-2 h-0.5 bg-cyan-400 inline-block"></span>EMA 9
+              </span>
+              <span className="flex items-center gap-1 text-amber-400">
+                <span className="w-2 h-0.5 bg-amber-400 inline-block"></span>EMA 21
+              </span>
+              <span className="flex items-center gap-1 text-indigo-400">
+                <span className="w-2 h-0.5 bg-indigo-400 inline-block"></span>EMA 50
+              </span>
+              <span className="flex items-center gap-1 text-purple-400">
+                <span className="w-2 h-0.5 bg-purple-400 inline-block"></span>EMA 200
+              </span>
+            </div>
+          )}
+
           <div className="flex items-center gap-1.5 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
             <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
             <span className="text-slate-300 text-[10px]">HH / HL Alcista</span>
@@ -402,3 +509,4 @@ export const ChartSection: React.FC<ChartSectionProps> = ({
     </div>
   );
 };
+
