@@ -273,3 +273,341 @@ export function generateTradingStrategies(params: {
 
   return strategies;
 }
+
+// ----------------------------------------------------
+// 1. Order Flow & Liquidation Heatmap Calculations
+// ----------------------------------------------------
+
+export function calculateOrderFlowMetrics(
+  candlesOrConfig: Candle[] | {
+    candles: Candle[];
+    currentPrice: number;
+    fundingRateVal?: number;
+    nextFundingTime?: number;
+    countdownText?: string;
+    sentiment?: 'Altamente Alcista (Longs pagan)' | 'Altamente Bajista (Shorts pagan)' | 'Neutral / Equilibrado';
+  },
+  secondPrice?: number
+): import('../types').OrderFlowAnalysis {
+  let candles: Candle[] = [];
+  let currentPrice = 0;
+  let fundingRateVal = 0.0001;
+  let nextFundingTime = Date.now() + 1000 * 60 * 60 * 4;
+  let countdownText = '03:14:22';
+  let sentiment: 'Altamente Alcista (Longs pagan)' | 'Altamente Bajista (Shorts pagan)' | 'Neutral / Equilibrado' = 'Neutral / Equilibrado';
+
+  if (Array.isArray(candlesOrConfig)) {
+    candles = candlesOrConfig;
+    currentPrice = secondPrice || 0;
+  } else if (candlesOrConfig && typeof candlesOrConfig === 'object') {
+    candles = candlesOrConfig.candles || [];
+    currentPrice = candlesOrConfig.currentPrice || 0;
+    if (candlesOrConfig.fundingRateVal !== undefined) fundingRateVal = candlesOrConfig.fundingRateVal;
+    if (candlesOrConfig.nextFundingTime !== undefined) nextFundingTime = candlesOrConfig.nextFundingTime;
+    if (candlesOrConfig.countdownText) countdownText = candlesOrConfig.countdownText;
+    if (candlesOrConfig.sentiment) sentiment = candlesOrConfig.sentiment;
+  }
+
+  if (!candles || candles.length === 0 || currentPrice <= 0) {
+    return {
+      cvdHistory: [],
+      takerBuyRatio: 0.5,
+      aggressiveSide: 'BALANCED',
+      cvdDivergence: 'Neutral / Sincronizado',
+      liquidationLevels: [],
+      liquidationMagnetLong: null,
+      liquidationMagnetShort: null,
+      fundingRate: {
+        rate: fundingRateVal,
+        predictedRate: fundingRateVal,
+        nextFundingTime,
+        countdownText,
+        sentiment,
+      },
+    };
+  }
+
+  // Calculate Candle Delta & Cumulative Volume Delta (CVD)
+  let cumulativeDelta = 0;
+  let totalBuyVol = 0;
+  let totalSellVol = 0;
+
+  const cvdHistory = candles.slice(-50).map(c => {
+    const range = c.high - c.low;
+    // Estimate buy vs sell volume based on close position within candle range and close vs open
+    let buyRatio = 0.5;
+    if (range > 0) {
+      const positionRatio = (c.close - c.low) / range;
+      const bodyRatio = (c.close - c.open) / range;
+      buyRatio = Math.max(0.05, Math.min(0.95, 0.5 + bodyRatio * 0.3 + (positionRatio - 0.5) * 0.4));
+    }
+
+    const buyVol = c.volume * buyRatio;
+    const sellVol = c.volume * (1 - buyRatio);
+    const delta = buyVol - sellVol;
+
+    cumulativeDelta += delta;
+    totalBuyVol += buyVol;
+    totalSellVol += sellVol;
+
+    return {
+      time: c.time,
+      price: c.close,
+      buyVolume: buyVol,
+      sellVolume: sellVol,
+      delta,
+      cvd: cumulativeDelta,
+    };
+  });
+
+  const totalVol = totalBuyVol + totalSellVol;
+  const takerBuyRatio = totalVol > 0 ? totalBuyVol / totalVol : 0.5;
+  const aggressiveSide = takerBuyRatio > 0.53 ? 'BUYERS' : takerBuyRatio < 0.47 ? 'SELLERS' : 'BALANCED';
+
+  // Check CVD Divergence on last 20 candles
+  let cvdDivergence: 'Alcista (Absorción Compradora)' | 'Bajista (Absorción Vendedora)' | 'Neutral / Sincronizado' = 'Neutral / Sincronizado';
+  if (cvdHistory.length >= 15) {
+    const firstHalf = cvdHistory.slice(-15, -7);
+    const secondHalf = cvdHistory.slice(-7);
+
+    const priceStart = Math.min(...firstHalf.map(x => x.price));
+    const priceEnd = secondHalf[secondHalf.length - 1].price;
+    const cvdStart = firstHalf[0].cvd;
+    const cvdEnd = secondHalf[secondHalf.length - 1].cvd;
+
+    // Price making lower low while CVD making higher high (Bullish absorption)
+    if (priceEnd < priceStart && cvdEnd > cvdStart) {
+      cvdDivergence = 'Alcista (Absorción Compradora)';
+    } else if (priceEnd > priceStart && cvdEnd < cvdStart) {
+      cvdDivergence = 'Bajista (Absorción Vendedora)';
+    }
+  }
+
+  // Calculate Theoretical Liquidation Pools / Clusters
+  // Typical high leverage clusters: 100x (~0.8% away), 50x (~1.8%), 25x (~3.8%), 10x (~9.5%)
+  const leverages = [100, 50, 25, 10];
+  const liquidationLevels: import('../types').LiquidationLevel[] = [];
+
+  leverages.forEach(lev => {
+    const distanceMult = 1 / lev;
+    // Long liquidations sit below current price (when price drops)
+    const longLiqPrice = currentPrice * (1 - distanceMult * 0.95);
+    const longDistPct = ((currentPrice - longLiqPrice) / currentPrice) * 100;
+
+    liquidationLevels.push({
+      leverage: lev,
+      side: 'LONG',
+      estimatedPrice: longLiqPrice,
+      distancePercent: longDistPct,
+      liquidityDensity: lev >= 50 ? 'Crítica' : lev >= 25 ? 'Alta' : 'Media',
+      intensity: lev === 100 ? 95 : lev === 50 ? 80 : lev === 25 ? 60 : 40,
+    });
+
+    // Short liquidations sit above current price (when price rises)
+    const shortLiqPrice = currentPrice * (1 + distanceMult * 0.95);
+    const shortDistPct = ((shortLiqPrice - currentPrice) / currentPrice) * 100;
+
+    liquidationLevels.push({
+      leverage: lev,
+      side: 'SHORT',
+      estimatedPrice: shortLiqPrice,
+      distancePercent: shortDistPct,
+      liquidityDensity: lev >= 50 ? 'Crítica' : lev >= 25 ? 'Alta' : 'Media',
+      intensity: lev === 100 ? 95 : lev === 50 ? 80 : lev === 25 ? 60 : 40,
+    });
+  });
+
+  // Sort liquidation levels by price descending
+  liquidationLevels.sort((a, b) => b.estimatedPrice - a.estimatedPrice);
+
+  // Identify high-density magnet prices (cluster of 50x / 100x liquidations)
+  const shortMagnets = liquidationLevels.filter(l => l.side === 'SHORT' && l.leverage >= 50);
+  const longMagnets = liquidationLevels.filter(l => l.side === 'LONG' && l.leverage >= 50);
+
+  const liquidationMagnetShort = shortMagnets.length > 0 ? shortMagnets[0].estimatedPrice : null;
+  const liquidationMagnetLong = longMagnets.length > 0 ? longMagnets[0].estimatedPrice : null;
+
+  return {
+    cvdHistory,
+    takerBuyRatio,
+    aggressiveSide,
+    cvdDivergence,
+    liquidationLevels,
+    liquidationMagnetLong,
+    liquidationMagnetShort,
+    fundingRate: {
+      rate: fundingRateVal,
+      predictedRate: fundingRateVal,
+      nextFundingTime,
+      countdownText,
+      sentiment,
+    },
+  };
+}
+
+// ----------------------------------------------------
+// 2. Bollinger Bands & Squeeze Detection
+// ----------------------------------------------------
+
+export function calculateBollingerBands(
+  candles: Candle[],
+  period: number = 20,
+  multiplier: number = 2
+): { upper: number | null; middle: number | null; lower: number | null; bandwidth: number | null; isSqueeze: boolean } {
+  if (!candles || candles.length < period) {
+    return { upper: null, middle: null, lower: null, bandwidth: null, isSqueeze: false };
+  }
+
+  const slice = candles.slice(-period);
+  const closes = slice.map(c => c.close);
+  const sum = closes.reduce((a, b) => a + b, 0);
+  const mean = sum / period;
+
+  const variance = closes.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / period;
+  const stdDev = Math.sqrt(variance);
+
+  const upper = mean + stdDev * multiplier;
+  const lower = mean - stdDev * multiplier;
+  const bandwidth = mean > 0 ? ((upper - lower) / mean) * 100 : 0;
+
+  // Squeeze threshold: very narrow bandwidth relative to asset
+  const isSqueeze = bandwidth < 2.2;
+
+  return {
+    upper,
+    middle: mean,
+    lower,
+    bandwidth,
+    isSqueeze,
+  };
+}
+
+// ----------------------------------------------------
+// 3. Institutional Risk Management Calculator
+// ----------------------------------------------------
+
+export function calculatePositionRisk(
+  config: import('../types').RiskCalculatorConfig
+): import('../types').RiskCalculatorResult {
+  const { accountBalance, riskPercent, entryPrice, stopLossPrice, takeProfitPrice, direction, leverage } = config;
+
+  const riskAmountUsdt = (accountBalance * (riskPercent / 100));
+  const priceDistance = Math.abs(entryPrice - stopLossPrice);
+
+  let positionSizeCoins = 0;
+  let positionValueUsdt = 0;
+  let requiredMarginUsdt = 0;
+  let potentialProfitUsdt = 0;
+  let potentialLossUsdt = 0;
+  let riskRewardRatio = 0;
+  let liquidationPriceEstimated = 0;
+
+  if (priceDistance > 0 && entryPrice > 0) {
+    // Exact coins to risk exact riskAmountUsdt on stop loss hit
+    positionSizeCoins = riskAmountUsdt / priceDistance;
+    positionValueUsdt = positionSizeCoins * entryPrice;
+    requiredMarginUsdt = positionValueUsdt / Math.max(1, leverage);
+
+    const profitDistance = Math.abs(takeProfitPrice - entryPrice);
+    potentialProfitUsdt = positionSizeCoins * profitDistance;
+    potentialLossUsdt = riskAmountUsdt;
+    riskRewardRatio = priceDistance > 0 ? profitDistance / priceDistance : 0;
+
+    // Estimate isolated liquidation price
+    // Maintenance margin ~ 0.5%
+    const mm = 0.005;
+    if (direction === 'LONG') {
+      liquidationPriceEstimated = entryPrice * (1 - (1 / leverage) + mm);
+    } else {
+      liquidationPriceEstimated = entryPrice * (1 + (1 / leverage) - mm);
+    }
+  }
+
+  const isSafeMargin = requiredMarginUsdt <= accountBalance * 0.8;
+
+  return {
+    riskAmountUsdt,
+    positionSizeCoins,
+    positionValueUsdt,
+    requiredMarginUsdt,
+    potentialProfitUsdt,
+    potentialLossUsdt,
+    riskRewardRatio,
+    liquidationPriceEstimated,
+    isSafeMargin,
+  };
+}
+
+// ----------------------------------------------------
+// 4. Web Audio Synthesizer for Institutional Audio Alerts
+// ----------------------------------------------------
+
+let audioCtx: AudioContext | null = null;
+
+export function playAudioAlert(type: 'bullish' | 'bearish' | 'alert' | 'success' | 'click') {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+
+    if (!audioCtx || audioCtx.state === 'suspended') {
+      audioCtx = new AudioContextClass();
+    }
+
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    if (type === 'bullish') {
+      // 2-tone bright rising chime
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, now); // D5
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.15); // A5
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      osc.start(now);
+      osc.stop(now + 0.35);
+    } else if (type === 'bearish') {
+      // 2-tone descending chime
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(440, now); // A4
+      osc.frequency.exponentialRampToValueAtTime(293.66, now + 0.15); // D4
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      osc.start(now);
+      osc.stop(now + 0.35);
+    } else if (type === 'alert') {
+      // High attention double pulse
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(880, now);
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+      gain.gain.setValueAtTime(0.15, now + 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+      osc.start(now);
+      osc.stop(now + 0.3);
+    } else if (type === 'success') {
+      // Triad chord progression
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(523.25, now); // C5
+      osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
+      osc.frequency.setValueAtTime(783.99, now + 0.16); // G5
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+      osc.start(now);
+      osc.stop(now + 0.4);
+    } else if (type === 'click') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(800, now);
+      gain.gain.setValueAtTime(0.03, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.04);
+      osc.start(now);
+      osc.stop(now + 0.05);
+    }
+  } catch (e) {
+    // AudioContext permission may need user interaction first
+  }
+}
+

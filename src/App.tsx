@@ -7,6 +7,7 @@ import {
   TradeStrategy,
   LogEntry,
   BinanceDashboardData,
+  OrderFlowAnalysis,
 } from './types';
 import {
   formatKlines,
@@ -16,12 +17,23 @@ import {
   calculateRvol,
   calculatePivotLevels,
   generateTradingStrategies,
+  calculateOrderFlowMetrics,
 } from './utils/indicators';
-import { fetchMarketData, validateSymbol, fetchBinanceDashboard, executeBinanceTrade } from './utils/marketService';
+import {
+  fetchMarketData,
+  validateSymbol,
+  fetchBinanceDashboard,
+  executeBinanceTrade,
+  fetchFundingRateData,
+} from './utils/marketService';
 import { KeyLevels } from './components/KeyLevels';
 import { IndicatorMatrix } from './components/IndicatorMatrix';
 import { ActionPlan } from './components/ActionPlan';
 import { ChartSection } from './components/ChartSection';
+import { OrderFlowMetrics } from './components/OrderFlowMetrics';
+import { RiskAutomationPanel } from './components/RiskAutomationPanel';
+import { MarketScannerTab } from './components/MarketScannerTab';
+import { TradingJournalTab } from './components/TradingJournalTab';
 import { BinanceWalletTab } from './components/BinanceWalletTab';
 import { BinanceOrderModal } from './components/BinanceOrderModal';
 import { CyclesModal } from './components/CyclesModal';
@@ -31,14 +43,14 @@ import {
   BarChart3,
   Wallet,
   Zap,
-  Search,
-  CheckCircle,
-  AlertCircle,
-  TrendingUp,
+  Radio,
+  BookOpen,
+  Waves,
+  ShieldAlert,
 } from 'lucide-react';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'analysis' | 'binance'>('analysis');
+  const [activeTab, setActiveTab] = useState<'analysis' | 'scanner' | 'journal' | 'binance'>('analysis');
   const [symbolInput, setSymbolInput] = useState<string>('BTCUSDT');
   const [activeSymbol, setActiveSymbol] = useState<string>('BTCUSDT');
   const [isLoadingMarket, setIsLoadingMarket] = useState<boolean>(false);
@@ -55,6 +67,19 @@ export default function App() {
   const [openInterest, setOpenInterest] = useState<number | null>(null);
   const [oiHistory, setOiHistory] = useState<{ value: number; time: number }[]>([]);
   const [rvol5m, setRvol5m] = useState<number | null>(null);
+  const [fundingRateInfo, setFundingRateInfo] = useState<{
+    rate: number;
+    predictedRate: number;
+    nextFundingTime: number;
+    countdownText: string;
+    sentiment: 'Altamente Alcista (Longs pagan)' | 'Altamente Bajista (Shorts pagan)' | 'Neutral / Equilibrado';
+  }>({
+    rate: 0.0001,
+    predictedRate: 0.0001,
+    nextFundingTime: Date.now() + 1000 * 60 * 60 * 3,
+    countdownText: '03:14:22',
+    sentiment: 'Neutral / Equilibrado',
+  });
 
   // Strategies and calculations
   const [sr1d, setSr1d] = useState<PivotLevels>({ r1: null, r2: null, r3: null, s1: null, s2: null, s3: null });
@@ -84,6 +109,20 @@ export default function App() {
     const id = Math.random().toString(36).substring(2, 9);
     setLogs(prev => [...prev.slice(-80), { id, time, message, type }]);
   }, []);
+
+  // Compute Order Flow Analysis (CVD, Liquidity Magnets, Liquidation Heatmap)
+  const orderFlow: OrderFlowAnalysis = React.useMemo(() => {
+    const candles15m = candles['15m'] || candles['5m'] || [];
+    const p = currentPrice || (ticker ? parseFloat(ticker.lastPrice) : 0);
+    return calculateOrderFlowMetrics({
+      candles: candles15m,
+      currentPrice: p,
+      fundingRateVal: fundingRateInfo.rate,
+      nextFundingTime: fundingRateInfo.nextFundingTime,
+      countdownText: fundingRateInfo.countdownText,
+      sentiment: fundingRateInfo.sentiment,
+    });
+  }, [candles, currentPrice, ticker, fundingRateInfo]);
 
   // Compute OI sentiment & trend
   const oiAnalysis = React.useMemo(() => {
@@ -141,7 +180,6 @@ export default function App() {
         }
       })
       .catch(() => {
-        // En GitHub Pages o modo estático, no hay backend server. Las claves se ingresan directamente en la app.
         setApiConfigured(false);
       });
   }, [addLog]);
@@ -249,53 +287,51 @@ export default function App() {
       trend4h,
       isDanger: false,
     });
+
     setStrategies(strats);
   }, [activeSymbol]);
 
-  // Main Auto-Analyze function
-  const runAutoAnalyze = async (symbolToAnalyze?: string) => {
-    const s = (symbolToAnalyze || symbolInput).trim().toUpperCase();
-    if (!s) {
-      addLog('Ingresa un símbolo primero (ej. BTCUSDT).', 'warn');
-      return;
-    }
+  // Main Market Data Fetcher & Analyzer
+  const runAutoAnalyze = async (symbolOverride?: string) => {
+    const s = (symbolOverride || symbolInput).trim().toUpperCase();
+    if (!s) return;
 
-    setIsLoadingMarket(true);
     setActiveSymbol(s);
-    addLog(`====== Iniciando Auto-Análisis para ${s} ======`, 'info');
+    setSymbolInput(s);
+    setIsLoadingMarket(true);
+    setSymbolValidationMsg({ text: `Analizando ${s} en Binance Futures...`, type: 'validating' });
+    addLog(`Iniciando escaneo multi-temporal para ${s}...`, 'info');
 
     try {
-      const data = await fetchMarketData(s);
-      if (!data || !data.ticker || data.ticker.code) {
-        throw new Error(data?.ticker?.msg || 'Símbolo no encontrado en Binance Futures');
+      const [marketData, fundingData] = await Promise.all([
+        fetchMarketData(s),
+        fetchFundingRateData(s),
+      ]);
+
+      if (!marketData || !marketData.ticker) {
+        throw new Error(`No se pudo obtener datos para el par ${s}`);
       }
 
-      const p = parseFloat(data.ticker.lastPrice);
-      setTicker(data.ticker);
+      setTicker(marketData.ticker);
+      const p = parseFloat(marketData.ticker.lastPrice);
       setCurrentPrice(p);
+      setCandles(marketData.candles || {});
+      setKlines1w(marketData.klines1w || []);
+      setFundingRateInfo(fundingData);
 
-      const parsedWeekly = formatKlines(data.klines1w);
-      setKlines1w(parsedWeekly);
-
-      const candlesMap: Record<string, Candle[]> = {};
-      Object.keys(data.candles).forEach(tf => {
-        candlesMap[tf] = formatKlines(data.candles[tf]);
-      });
-      setCandles(candlesMap);
+      // Open Interest
+      if (marketData.oi) {
+        setOpenInterest(marketData.oi);
+        setOiHistory(prev => [...prev.slice(-30), { value: marketData.oi!, time: Date.now() }]);
+      }
 
       // RVOL 5m
-      const calculatedRvol5m = calculateRvol(candlesMap['5m'], 20);
-      setRvol5m(calculatedRvol5m);
+      const c5m = marketData.candles['5m'] || [];
+      const rv = calculateRvol(c5m, 20);
+      setRvol5m(rv);
 
-      // Open interest
-      if (data.oi?.openInterest) {
-        const oiVal = parseFloat(data.oi.openInterest);
-        setOpenInterest(oiVal);
-        setOiHistory(prev => [...prev.slice(-30), { value: oiVal, time: Date.now() }]);
-      }
-
-      // Calculations
-      updateCalculations(candlesMap, p, calculatedRvol5m);
+      // Update indicator matrix & plan
+      updateCalculations(marketData.candles, p, rv);
 
       // Setup Live stream
       setupPriceStream(s);
@@ -371,7 +407,6 @@ export default function App() {
       }
 
       addLog(`🚀 ÉXITO LIVE: ${data.message}`, 'success');
-      // Refresh wallet
       syncBinanceWallet();
       return { ok: true, message: data.message, status: data.status };
     } catch (err: any) {
@@ -401,6 +436,7 @@ export default function App() {
       sr1d,
       sr4h,
       strategies,
+      orderFlow,
       timestamp: new Date().toISOString(),
     };
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
@@ -442,18 +478,42 @@ export default function App() {
             </div>
           </div>
 
-          {/* Geometric Navigation Tabs */}
-          <nav className="flex items-center gap-6 text-xs font-semibold uppercase tracking-wider">
+          {/* Geometric Navigation Tabs (4 Core Views) */}
+          <nav className="flex items-center gap-4 sm:gap-6 text-xs font-semibold uppercase tracking-wider overflow-x-auto py-1">
             <button
               onClick={() => setActiveTab('analysis')}
-              className={`py-2 px-1 border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`py-2 px-1 border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                 activeTab === 'analysis'
                   ? 'border-amber-500 text-slate-100 font-bold'
                   : 'border-transparent text-slate-400 hover:text-slate-200'
               }`}
             >
               <BarChart3 className="w-3.5 h-3.5" />
-              <span>Análisis & Gráficos</span>
+              <span>Análisis & Order Flow</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('scanner')}
+              className={`py-2 px-1 border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                activeTab === 'scanner'
+                  ? 'border-amber-500 text-slate-100 font-bold'
+                  : 'border-transparent text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Radio className="w-3.5 h-3.5" />
+              <span>Escáner Multi-Par</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('journal')}
+              className={`py-2 px-1 border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                activeTab === 'journal'
+                  ? 'border-amber-500 text-slate-100 font-bold'
+                  : 'border-transparent text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>Bitácora de Trading</span>
             </button>
 
             <button
@@ -461,7 +521,7 @@ export default function App() {
                 setActiveTab('binance');
                 syncBinanceWallet();
               }}
-              className={`py-2 px-1 border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`py-2 px-1 border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                 activeTab === 'binance'
                   ? 'border-amber-500 text-slate-100 font-bold'
                   : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -524,7 +584,8 @@ export default function App() {
           <span className="font-mono text-[11px] uppercase tracking-wider">{symbolValidationMsg.text}</span>
         </div>
 
-        {activeTab === 'analysis' ? (
+        {/* Tab 1: Analysis, Order Flow & Risk Automation */}
+        {activeTab === 'analysis' && (
           <div className="space-y-5">
             {/* Top Grid: Key Levels + Action Plan */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
@@ -557,17 +618,64 @@ export default function App() {
               </div>
             </div>
 
+            {/* Category 1: Order Flow, CVD & Liquidity Magnets Panel */}
+            <OrderFlowMetrics
+              orderFlow={orderFlow}
+              currentPrice={currentPrice || (ticker ? parseFloat(ticker.lastPrice) : 0)}
+              symbol={activeSymbol}
+            />
+
+            {/* Category 2: Risk Automation, Sizing Calculator & Emergency Panic Panel */}
+            <RiskAutomationPanel
+              currentPrice={currentPrice || (ticker ? parseFloat(ticker.lastPrice) : 0)}
+              symbol={activeSymbol}
+              activeStrategy={strategies[0] || null}
+              userBalance={binanceData?.balance?.totalWalletBalance || 1000}
+              openPositions={binanceData?.positions || []}
+              apiKey={customApiKey}
+              apiSecret={customApiSecret}
+              onTradeExecuted={syncBinanceWallet}
+              onLogMessage={addLog}
+            />
+
             {/* Timeframe Indicator Matrix */}
             <IndicatorMatrix rows={matrixRows} />
 
-            {/* Candlestick & Market Structure Chart */}
+            {/* Interactive Multi-TF Candlestick Chart with TP/SL overlays */}
             <ChartSection
               candles={candles['4h'] || []}
+              candlesMap={candles}
               symbol={activeSymbol}
+              activeStrategy={strategies[0] || null}
+              currentPrice={currentPrice || undefined}
               onOpenCyclesModal={() => setIsCyclesModalOpen(true)}
             />
           </div>
-        ) : (
+        )}
+
+        {/* Tab 2: Category 3 Market Scanner Multi-Par */}
+        {activeTab === 'scanner' && (
+          <MarketScannerTab
+            onSelectSymbol={sym => {
+              setActiveSymbol(sym);
+              setSymbolInput(sym);
+              setActiveTab('analysis');
+              runAutoAnalyze(sym);
+            }}
+            onLogMessage={addLog}
+          />
+        )}
+
+        {/* Tab 3: Category 4 Trading Journal & Performance Analytics */}
+        {activeTab === 'journal' && (
+          <TradingJournalTab
+            binanceTrades={binanceData?.trades || []}
+            onLogMessage={addLog}
+          />
+        )}
+
+        {/* Tab 4: Binance Account Diagnostics & Wallet */}
+        {activeTab === 'binance' && (
           <BinanceWalletTab
             data={binanceData}
             isLoading={isLoadingBinance}

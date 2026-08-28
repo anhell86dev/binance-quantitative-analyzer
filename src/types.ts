@@ -149,3 +149,113 @@ export interface BinanceDashboardData {
   funding: BinanceFundingItem[];
   trades: BinanceTradeItem[];
 }
+
+// 1. Microstructure & Order Flow Types
+export interface LiquidationLevel {
+  leverage: number; // 10, 25, 50, 100
+  side: 'LONG' | 'SHORT';
+  estimatedPrice: number;
+  distancePercent: number;
+  liquidityDensity: 'Alta' | 'Media' | 'Crítica';
+  intensity: number; // 0 to 100 for heatmap
+}
+
+export interface CvdDataPoint {
+  time: number;
+  price: number;
+  buyVolume: number;
+  sellVolume: number;
+  delta: number;
+  cvd: number;
+}
+
+export interface OrderFlowAnalysis {
+  cvdDivergence: 'Alcista (Absorción Compradora)' | 'Bajista (Absorción Vendedora)' | 'Neutral / Sincronizado';
+  takerBuyRatio: number; // e.g. 0.55 -> 55% buy volume
+  aggressiveSide: 'BUYERS' | 'SELLERS' | 'BALANCED';
+  liquidationMagnetLong: number | null;
+  liquidationMagnetShort: number | null;
+  liquidationLevels: LiquidationLevel[];
+  cvdHistory: CvdDataPoint[];
+  fundingRate: {
+    rate: number;
+    predictedRate: number;
+    nextFundingTime: number; // timestamp
+    countdownText: string;
+    sentiment: 'Altamente Alcista (Longs pagan)' | 'Altamente Bajista (Shorts pagan)' | 'Neutral / Equilibrado';
+  };
+}
+
+// 2. Risk Automation & Position Calculator Types
+export interface RiskCalculatorConfig {
+  accountBalance: number;
+  riskPercent: number; // e.g. 1%
+  entryPrice: number;
+  stopLossPrice: number;
+  takeProfitPrice: number;
+  direction: 'LONG' | 'SHORT';
+  leverage: number;
+}
+
+export interface RiskCalculatorResult {
+  riskAmountUsdt: number;
+  positionSizeCoins: number;
+  positionValueUsdt: number;
+  requiredMarginUsdt: number;
+  potentialProfitUsdt: number;
+  potentialLossUsdt: number;
+  riskRewardRatio: number;
+  liquidationPriceEstimated: number;
+  isSafeMargin: boolean;
+}
+
+// 3. Multi-Pair Market Scanner Types
+export interface ScannerItem {
+  symbol: string;
+  price: number;
+  change24h: number;
+  volume24h: number;
+  rvol: number;
+  rsi15m: number;
+  rsi1h: number;
+  trend: 'Alcista' | 'Bajista' | 'Neutral';
+  signal: 'LONG' | 'SHORT' | 'SQUEEZE' | 'VOL_SPIKE' | 'NEUTRAL';
+  signalStrength: number; // 1 to 5
+  divergence: string | null;
+  bollingerSqueeze: boolean;
+  lastUpdated: number;
+}
+
+// 4. Trading Journal & Performance Types
+export interface JournalEntry {
+  id: string;
+  timestamp: number;
+  symbol: string;
+  side: 'LONG' | 'SHORT';
+  entryPrice: number;
+  exitPrice?: number;
+  stopLoss: number;
+  takeProfit: number;
+  quantity: number;
+  leverage: number;
+  status: 'OPEN' | 'CLOSED_WIN' | 'CLOSED_LOSS' | 'CANCELLED';
+  pnlUsdt?: number;
+  pnlPercent?: number;
+  strategyName: string;
+  notes?: string;
+  tags?: string[];
+}
+
+export interface JournalStats {
+  totalTrades: number;
+  winTrades: number;
+  lossTrades: number;
+  winRate: number;
+  totalPnl: number;
+  profitFactor: number;
+  averageRr: number;
+  bestTrade: number;
+  worstTrade: number;
+  consecutiveWins: number;
+}
+
