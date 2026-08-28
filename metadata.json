@@ -2,5 +2,7 @@
   "name": "TradingView Quantitative Analyzer",
   "description": "Herramienta de análisis cuantitativo con escáner RVOL, Open Interest, soportes/resistencias multi-temporalidad y conexión con Binance Futures.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

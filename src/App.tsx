@@ -17,6 +17,7 @@ import {
   calculatePivotLevels,
   generateTradingStrategies,
 } from './utils/indicators';
+import { fetchMarketData, validateSymbol } from './utils/marketService';
 import { KeyLevels } from './components/KeyLevels';
 import { IndicatorMatrix } from './components/IndicatorMatrix';
 import { ActionPlan } from './components/ActionPlan';
@@ -127,17 +128,21 @@ export default function App() {
   // Check Binance API Key status on load
   useEffect(() => {
     fetch('/api/binance/status')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error('Servidor API local no detectado');
+        return res.json();
+      })
       .then(data => {
-        setApiConfigured(data.configured);
+        setApiConfigured(Boolean(data.configured));
         if (data.configured) {
           addLog(`Binance API configurada en el servidor (Clave: ${data.keyMask})`, 'success');
         } else {
-          addLog('Binance API no configurada en variables de entorno. Puedes ingresar tus claves manualmente en la pestaña Mi Cuenta.', 'warn');
+          addLog('Binance API no configurada en servidor. Puedes ingresar tus claves manualmente en la pestaña Mi Cuenta.', 'warn');
         }
       })
-      .catch(err => {
-        addLog(`Error verificando API Binance: ${err.message}`, 'warn');
+      .catch(() => {
+        // En GitHub Pages o modo estático, no hay backend server. Las claves se ingresan directamente en la app.
+        setApiConfigured(false);
       });
   }, [addLog]);
 
@@ -260,15 +265,9 @@ export default function App() {
     addLog(`====== Iniciando Auto-Análisis para ${s} ======`, 'info');
 
     try {
-      const resp = await fetch(`/api/market-data?symbol=${s}`);
-      if (!resp.ok) {
-        const err = await resp.json();
-        throw new Error(err.error || 'Error al obtener datos del mercado');
-      }
-
-      const data = await resp.json();
-      if (!data.ticker || data.ticker.code) {
-        throw new Error(data.ticker?.msg || 'Símbolo no encontrado en Binance Futures');
+      const data = await fetchMarketData(s);
+      if (!data || !data.ticker || data.ticker.code) {
+        throw new Error(data?.ticker?.msg || 'Símbolo no encontrado en Binance Futures');
       }
 
       const p = parseFloat(data.ticker.lastPrice);
@@ -321,12 +320,9 @@ export default function App() {
     addLog(`Validando reglas de trading para ${s}...`, 'info');
 
     try {
-      const res = await fetch(`/api/validate-symbol?symbol=${s}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-
+      const data = await validateSymbol(s);
       setSymbolValidationMsg({
-        text: `✅ ${data.symbol} ACTIVO · Tick: ${data.price?.tickSize} · Lote Min: ${data.quantity?.minQty}`,
+        text: `✅ ${data.symbol} ACTIVO · Tick: ${data.price?.tickSize || '---'} · Lote Min: ${data.quantity?.minQty || '---'}`,
         type: 'success',
       });
       addLog(`✅ Símbolo ${data.symbol} verificado y listo en Binance Futures.`, 'success');
