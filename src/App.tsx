@@ -573,6 +573,8 @@ export default function App() {
             isLoading={isLoadingBinance}
             onSync={syncBinanceWallet}
             apiConfigured={apiConfigured || Boolean(customApiKey && customApiSecret)}
+            initialApiKey={customApiKey}
+            initialApiSecret={customApiSecret}
             onSaveCustomKeys={(k, s) => {
               setCustomApiKey(k);
               setCustomApiSecret(s);

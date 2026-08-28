@@ -1,12 +1,31 @@
 import React, { useState } from 'react';
 import { BinanceDashboardData } from '../types';
-import { RefreshCw, Wallet, ShieldCheck, ArrowDownRight, ArrowUpRight, Key, AlertTriangle, CheckCircle } from 'lucide-react';
+import {
+  RefreshCw,
+  Wallet,
+  ShieldCheck,
+  ArrowDownRight,
+  ArrowUpRight,
+  Key,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Zap,
+  Activity,
+  CheckCircle2,
+  Lock,
+  ExternalLink,
+} from 'lucide-react';
+import { verifyBinanceApiKeys, ApiKeyVerificationResult } from '../utils/marketService';
 
 interface BinanceWalletTabProps {
   data: BinanceDashboardData | null;
   isLoading: boolean;
   onSync: () => void;
   apiConfigured: boolean;
+  initialApiKey?: string;
+  initialApiSecret?: string;
   onSaveCustomKeys?: (key: string, secret: string) => void;
 }
 
@@ -15,11 +34,21 @@ export const BinanceWalletTab: React.FC<BinanceWalletTabProps> = ({
   isLoading,
   onSync,
   apiConfigured,
+  initialApiKey = '',
+  initialApiSecret = '',
   onSaveCustomKeys,
 }) => {
   const [showKeyModal, setShowKeyModal] = useState(false);
-  const [customKey, setCustomKey] = useState('');
-  const [customSecret, setCustomSecret] = useState('');
+  const [customKey, setCustomKey] = useState(initialApiKey);
+  const [customSecret, setCustomSecret] = useState(initialApiSecret);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verifyResult, setVerifyResult] = useState<ApiKeyVerificationResult | null>(null);
+
+  // Sync state if props change
+  React.useEffect(() => {
+    if (initialApiKey) setCustomKey(initialApiKey);
+    if (initialApiSecret) setCustomSecret(initialApiSecret);
+  }, [initialApiKey, initialApiSecret]);
 
   const fmt = (v: number | string | undefined) => {
     const n = typeof v === 'string' ? parseFloat(v) : v;
@@ -34,11 +63,34 @@ export const BinanceWalletTab: React.FC<BinanceWalletTabProps> = ({
   const riskColor =
     marginRatio > 80 ? 'text-red-400 border-red-500' : marginRatio > 50 ? 'text-amber-400 border-amber-500' : 'text-slate-200 border-slate-700';
 
-  const handleSaveKeys = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveKeys = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (onSaveCustomKeys) {
       onSaveCustomKeys(customKey.trim(), customSecret.trim());
       setShowKeyModal(false);
+    }
+  };
+
+  const handleRunVerification = async () => {
+    if (!customKey.trim() || !customSecret.trim()) return;
+    setIsVerifying(true);
+    setVerifyResult(null);
+    try {
+      const res = await verifyBinanceApiKeys(customKey, customSecret);
+      setVerifyResult(res);
+    } catch (err: any) {
+      setVerifyResult({
+        valid: false,
+        timestampOffsetMs: 0,
+        syntaxCheck: { valid: false, apiKeyLength: customKey.length, hasWhitespace: false, message: err.message },
+        spotStatus: { connected: false, error: err.message },
+        futuresStatus: { connected: false, error: err.message },
+        permissions: null,
+        warnings: [],
+        suggestions: [`Error de red o conexión: ${err.message}`],
+      });
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -52,19 +104,24 @@ export const BinanceWalletTab: React.FC<BinanceWalletTabProps> = ({
             <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0" />
             <div>
               <p className="font-semibold text-amber-400 m-0 uppercase tracking-wide text-xs">
-                API Keys de Binance no detectadas en el servidor
+                Claves API de Binance no configuradas
               </p>
               <p className="text-slate-400 m-0 text-[11px] mt-0.5">
-                Para sincronizar tu billetera y enviar órdenes reales, configura <code className="bg-slate-950 text-amber-300 border border-slate-800 px-1.5 py-0.5 rounded font-mono">BINANCE_API_KEY</code> y <code className="bg-slate-950 text-amber-300 border border-slate-800 px-1.5 py-0.5 rounded font-mono">BINANCE_API_SECRET</code> en los Secretos de AI Studio o ingresa tus claves abajo.
+                Configura tu <code className="bg-slate-950 text-amber-300 border border-slate-800 px-1.5 py-0.5 rounded font-mono">API Key</code> y <code className="bg-slate-950 text-amber-300 border border-slate-800 px-1.5 py-0.5 rounded font-mono">API Secret</code> para sincronizar tus balances en tiempo real, auditar permisos y enviar órdenes a Binance Futures.
               </p>
             </div>
           </div>
-          <button
-            onClick={() => setShowKeyModal(true)}
-            className="bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer shadow-sm transition-colors uppercase tracking-wider"
-          >
-            <Key className="w-3.5 h-3.5" /> Configurar Claves
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setShowKeyModal(true);
+                setVerifyResult(null);
+              }}
+              className="bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer shadow-sm transition-colors uppercase tracking-wider"
+            >
+              <ShieldCheck className="w-3.5 h-3.5" /> Configurar y Revisar Claves
+            </button>
+          </div>
         </div>
       )}
 
@@ -81,10 +138,13 @@ export const BinanceWalletTab: React.FC<BinanceWalletTabProps> = ({
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setShowKeyModal(true)}
+              onClick={() => {
+                setShowKeyModal(true);
+                setVerifyResult(null);
+              }}
               className="bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer transition-colors font-mono"
             >
-              <Key className="w-3.5 h-3.5" /> Claves API
+              <ShieldCheck className="w-3.5 h-3.5 text-amber-400" /> Revisar Claves API
             </button>
             <button
               onClick={onSync}
@@ -417,62 +477,258 @@ export const BinanceWalletTab: React.FC<BinanceWalletTabProps> = ({
         </section>
       </div>
 
-      {/* Custom Key Modal */}
+      {/* Custom Key Modal & Diagnostic Tool */}
       {showKeyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 max-w-md w-full shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-0.5 bg-amber-500"></div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-xl w-full shadow-2xl relative overflow-hidden my-8">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-600"></div>
 
-            <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2 uppercase tracking-wide">
-              <Key className="w-4 h-4 text-amber-400" />
-              Credenciales API de Binance Futures
-            </h3>
-            <p className="text-xs text-slate-400 mb-4 leading-relaxed">
-              Ingresa tu API Key y Secret para firmar solicitudes a Binance Futures. Se mantendrán activas durante la sesión actual para sincronizar balances y colocar órdenes.
-            </p>
+            <div className="flex justify-between items-start mb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                  <ShieldCheck className="w-5 h-5 text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider m-0">
+                    Revisión y Diagnóstico de Claves API
+                  </h3>
+                  <p className="text-[11px] text-slate-400 m-0">
+                    Verifica la validez, permisos y sincronización de tus credenciales de Binance.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowKeyModal(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
 
             <form onSubmit={handleSaveKeys} className="space-y-4 text-xs">
-              <div>
-                <label className="text-slate-300 font-semibold block mb-1 uppercase tracking-wider text-[10px]">
-                  Binance API Key
-                </label>
-                <input
-                  type="text"
-                  value={customKey}
-                  onChange={e => setCustomKey(e.target.value)}
-                  placeholder="Pega tu API Key..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono focus:border-amber-400 focus:outline-none"
-                  required
-                />
+              <div className="space-y-3">
+                <div>
+                  <label className="text-slate-300 font-semibold block mb-1 uppercase tracking-wider text-[10px] flex justify-between items-center">
+                    <span>Binance API Key</span>
+                    <span className="text-slate-500 font-mono text-[9px]">
+                      {customKey.length > 0 ? `${customKey.length} chars` : 'Requerido'}
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    value={customKey}
+                    onChange={e => setCustomKey(e.target.value)}
+                    placeholder="Pega tu API Key (64 caracteres)..."
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono focus:border-amber-400 focus:outline-none placeholder:text-slate-600 text-xs"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-slate-300 font-semibold block mb-1 uppercase tracking-wider text-[10px] flex justify-between items-center">
+                    <span>Binance API Secret</span>
+                    <span className="text-slate-500 font-mono text-[9px]">
+                      {customSecret.length > 0 ? `${customSecret.length} chars` : 'Requerido'}
+                    </span>
+                  </label>
+                  <input
+                    type="password"
+                    value={customSecret}
+                    onChange={e => setCustomSecret(e.target.value)}
+                    placeholder="Pega tu API Secret (64 caracteres)..."
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono focus:border-amber-400 focus:outline-none placeholder:text-slate-600 text-xs"
+                    required
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="text-slate-300 font-semibold block mb-1 uppercase tracking-wider text-[10px]">
-                  Binance API Secret
-                </label>
-                <input
-                  type="password"
-                  value={customSecret}
-                  onChange={e => setCustomSecret(e.target.value)}
-                  placeholder="Pega tu Secret Key..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono focus:border-amber-400 focus:outline-none"
-                  required
-                />
+              {/* Action: Run Diagnostic Check */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleRunVerification}
+                  disabled={isVerifying || !customKey.trim() || !customSecret.trim()}
+                  className="w-full bg-slate-950 hover:bg-slate-800 border border-amber-500/40 text-amber-300 hover:text-amber-200 disabled:opacity-40 disabled:border-slate-800 disabled:text-slate-500 py-2.5 px-4 rounded-xl font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm text-xs"
+                >
+                  <Activity className={`w-4 h-4 ${isVerifying ? 'animate-spin text-amber-400' : 'text-amber-400'}`} />
+                  {isVerifying ? 'Diagnosticando claves en Binance...' : 'Revisar y Comprobar Claves Ahora'}
+                </button>
               </div>
 
+              {/* Diagnostic Results Card */}
+              {verifyResult && (
+                <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3.5 animate-fadeIn">
+                  {/* Status Banner */}
+                  <div
+                    className={`p-3 rounded-lg flex items-center justify-between gap-2 border ${
+                      verifyResult.valid
+                        ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
+                        : 'bg-red-950/40 border-red-500/40 text-red-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      {verifyResult.valid ? (
+                        <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+                      ) : (
+                        <XCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+                      )}
+                      <div>
+                        <p className="font-bold text-xs m-0">
+                          {verifyResult.valid
+                            ? 'Claves Válidas y Autenticadas con Binance'
+                            : 'Fallo de Autenticación o Permisos'}
+                        </p>
+                        <p className="text-[11px] opacity-80 m-0">
+                          {verifyResult.valid
+                            ? 'Firma criptográfica HMAC-SHA256 generada y aceptada por Binance.'
+                            : 'Binance rechazó la solicitud con las credenciales provistas.'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Diagnostic Matrix */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px]">
+                    {/* Clock Sync */}
+                    <div className="bg-slate-900 border border-slate-800/80 rounded-lg p-2.5">
+                      <div className="flex items-center gap-1.5 text-slate-400 mb-1">
+                        <Clock className="w-3.5 h-3.5 text-amber-400" />
+                        <span className="font-semibold uppercase text-[10px]">Reloj / Offset</span>
+                      </div>
+                      <span className="font-mono text-white font-bold">
+                        {verifyResult.timestampOffsetMs > 0 ? `+${verifyResult.timestampOffsetMs}` : verifyResult.timestampOffsetMs} ms
+                      </span>
+                      <span className="text-[9px] text-emerald-400 block mt-0.5">Sincronizado</span>
+                    </div>
+
+                    {/* Futures Status */}
+                    <div className="bg-slate-900 border border-slate-800/80 rounded-lg p-2.5">
+                      <div className="flex items-center gap-1.5 text-slate-400 mb-1">
+                        <Zap className="w-3.5 h-3.5 text-amber-400" />
+                        <span className="font-semibold uppercase text-[10px]">Binance Futures</span>
+                      </div>
+                      {verifyResult.futuresStatus.connected ? (
+                        <div>
+                          <span className="text-emerald-400 font-bold flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" /> Conectado
+                          </span>
+                          <span className="text-[9px] text-slate-400 block font-mono">
+                            Saldo: {fmt(verifyResult.futuresStatus.totalWalletBalance)} USDT
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-red-400 font-bold flex items-center gap-1">
+                          <XCircle className="w-3 h-3" /> Inactivo / Error
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Spot Status */}
+                    <div className="bg-slate-900 border border-slate-800/80 rounded-lg p-2.5">
+                      <div className="flex items-center gap-1.5 text-slate-400 mb-1">
+                        <Wallet className="w-3.5 h-3.5 text-amber-400" />
+                        <span className="font-semibold uppercase text-[10px]">Binance Spot</span>
+                      </div>
+                      {verifyResult.spotStatus.connected ? (
+                        <div>
+                          <span className="text-emerald-400 font-bold flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" /> Conectado
+                          </span>
+                          <span className="text-[9px] text-slate-400 block font-mono">
+                            Tipo: {verifyResult.spotStatus.accountType || 'SPOT'}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-amber-400 font-bold flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3" /> No disponible
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* API Permissions list if available */}
+                  {verifyResult.permissions && (
+                    <div className="bg-slate-900/90 border border-slate-800/80 rounded-lg p-3 space-y-2">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+                        Permisos Detectados en Binance
+                      </span>
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                        <div className="flex items-center gap-1.5">
+                          {verifyResult.permissions.enableReading ? (
+                            <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                          ) : (
+                            <XCircle className="w-3.5 h-3.5 text-red-400" />
+                          )}
+                          <span className="text-slate-300">Lectura de Datos</span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          {verifyResult.permissions.enableFutures ? (
+                            <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                          ) : (
+                            <XCircle className="w-3.5 h-3.5 text-red-400" />
+                          )}
+                          <span className="text-slate-300">Trading de Futuros</span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          {verifyResult.permissions.enableSpotAndMarginTrading ? (
+                            <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                          ) : (
+                            <XCircle className="w-3.5 h-3.5 text-slate-500" />
+                          )}
+                          <span className="text-slate-300">Trading Spot & Margen</span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          {!verifyResult.permissions.enableWithdrawals ? (
+                            <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                          ) : (
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                          )}
+                          <span className="text-slate-300">
+                            Retiros ({!verifyResult.permissions.enableWithdrawals ? 'Desactivados (Seguro)' : 'Activados'})
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Warnings & Suggestions */}
+                  {(verifyResult.warnings.length > 0 || verifyResult.suggestions.length > 0) && (
+                    <div className="space-y-1.5 text-[11px]">
+                      {verifyResult.warnings.map((w, i) => (
+                        <p key={i} className="text-amber-400 m-0 flex items-start gap-1.5 bg-amber-500/10 p-2 rounded border border-amber-500/20">
+                          <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                          <span>{w}</span>
+                        </p>
+                      ))}
+                      {verifyResult.suggestions.map((s, i) => (
+                        <p key={i} className="text-slate-300 m-0 flex items-start gap-1.5 bg-slate-900 p-2 rounded border border-slate-800">
+                          <span>{s}</span>
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Modal Actions */}
               <div className="flex gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowKeyModal(false)}
-                  className="flex-1 bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 py-2 rounded-lg font-semibold uppercase tracking-wider cursor-pointer transition-colors"
+                  className="flex-1 bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 py-2.5 rounded-xl font-semibold uppercase tracking-wider cursor-pointer transition-colors text-xs"
                 >
-                  Cancelar
+                  Cerrar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 py-2 rounded-lg font-bold uppercase tracking-wider cursor-pointer transition-colors shadow-sm"
+                  disabled={!customKey.trim() || !customSecret.trim()}
+                  className="flex-1 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-slate-950 py-2.5 rounded-xl font-bold uppercase tracking-wider cursor-pointer transition-colors shadow-sm text-xs flex items-center justify-center gap-1.5"
                 >
-                  Guardar y Sincronizar
+                  <Lock className="w-3.5 h-3.5" /> Guardar y Sincronizar
                 </button>
               </div>
             </form>
