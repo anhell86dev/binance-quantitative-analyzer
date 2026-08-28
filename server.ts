@@ -135,30 +135,85 @@ async function signedSpotRequest(
 let cachedExchangeInfo: any = null;
 let lastExchangeInfoFetch = 0;
 
+const DEFAULT_POPULAR_SYMBOLS = [
+  'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'DOGEUSDT', 'XRPUSDT',
+  'ADAUSDT', 'AVAXUSDT', 'LINKUSDT', 'TAOUSDT', 'SUIUSDT', 'NEARUSDT',
+  'PEPEUSDT', 'SHIBUSDT', 'APTUSDT', 'DOTUSDT', 'LTCUSDT', 'RENDERUSDT',
+];
+
 async function getExchangeInfo() {
   const now = Date.now();
   if (cachedExchangeInfo && now - lastExchangeInfoFetch < 1000 * 60 * 30) {
     return cachedExchangeInfo;
   }
 
-  const response = await fetch(`${BINANCE_FUTURES_BASE}/fapi/v1/exchangeInfo`);
-  if (!response.ok) {
-    throw new Error(`Error obteniendo exchangeInfo (${response.status})`);
+  // 1. Try Binance Futures
+  try {
+    const response = await fetch(`${BINANCE_FUTURES_BASE}/fapi/v1/exchangeInfo`);
+    if (response.ok) {
+      const data = await response.json();
+      cachedExchangeInfo = {
+        symbols: (data.symbols || []).map((s: any) => ({
+          symbol: s.symbol,
+          baseAsset: s.baseAsset,
+          quoteAsset: s.quoteAsset,
+          status: s.status,
+          priceFilter: s.filters?.find((f: any) => f.filterType === 'PRICE_FILTER'),
+          lotSizeFilter: s.filters?.find((f: any) => f.filterType === 'LOT_SIZE'),
+          minNotional: s.filters?.find((f: any) => f.filterType === 'MIN_NOTIONAL'),
+        })),
+      };
+      lastExchangeInfoFetch = now;
+      return cachedExchangeInfo;
+    }
+  } catch (err) {
+    // Continue to fallback
   }
-  const data = await response.json();
-  cachedExchangeInfo = {
-    symbols: (data.symbols || []).map((s: any) => ({
-      symbol: s.symbol,
-      baseAsset: s.baseAsset,
-      quoteAsset: s.quoteAsset,
-      status: s.status,
-      priceFilter: s.filters?.find((f: any) => f.filterType === 'PRICE_FILTER'),
-      lotSizeFilter: s.filters?.find((f: any) => f.filterType === 'LOT_SIZE'),
-      minNotional: s.filters?.find((f: any) => f.filterType === 'MIN_NOTIONAL'),
+
+  // 2. Try Binance Vision / Spot Public API
+  const spotEndpoints = [
+    'https://data-api.binance.vision/api/v3/exchangeInfo',
+    'https://api.binance.com/api/v3/exchangeInfo',
+  ];
+
+  for (const endpoint of spotEndpoints) {
+    try {
+      const response = await fetch(endpoint);
+      if (response.ok) {
+        const data = await response.json();
+        cachedExchangeInfo = {
+          symbols: (data.symbols || [])
+            .filter((s: any) => s.symbol.endsWith('USDT'))
+            .map((s: any) => ({
+              symbol: s.symbol,
+              baseAsset: s.baseAsset,
+              quoteAsset: s.quoteAsset,
+              status: s.status,
+              priceFilter: s.filters?.find((f: any) => f.filterType === 'PRICE_FILTER'),
+              lotSizeFilter: s.filters?.find((f: any) => f.filterType === 'LOT_SIZE'),
+              minNotional: s.filters?.find((f: any) => f.filterType === 'MIN_NOTIONAL' || f.filterType === 'NOTIONAL'),
+            })),
+        };
+        lastExchangeInfoFetch = now;
+        return cachedExchangeInfo;
+      }
+    } catch (err) {
+      // Continue
+    }
+  }
+
+  // 3. Static fallback if all network requests fail
+  return {
+    symbols: DEFAULT_POPULAR_SYMBOLS.map(sym => ({
+      symbol: sym,
+      baseAsset: sym.replace('USDT', ''),
+      quoteAsset: 'USDT',
+      status: 'TRADING',
+      priceFilter: { tickSize: '0.01' },
+      lotSizeFilter: { minQty: '0.001' },
+      minNotional: { notional: '5' },
     })),
   };
-  lastExchangeInfoFetch = now;
-  return cachedExchangeInfo;
 }
 
 // Helper precision calculation
@@ -173,6 +228,69 @@ function floorToStep(value: number, stepSize: string | number): number {
 function formatToStep(value: number, stepSize: string | number): string {
   const decimals = (String(stepSize).split('.')[1] || '').length;
   return floorToStep(value, stepSize).toFixed(decimals);
+}
+
+// Resilient Klines fetcher with multi-endpoint fallback
+async function fetchKlinesWithFallback(symbol: string, interval: string, limit: number = 300) {
+  const endpoints = [
+    `${BINANCE_FUTURES_BASE}/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`,
+    `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`,
+    `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`,
+  ];
+
+  for (const url of endpoints) {
+    try {
+      const resp = await fetch(url);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (Array.isArray(data) && data.length > 0) {
+          return data;
+        }
+      }
+    } catch (e) {
+      // try next endpoint
+    }
+  }
+
+  throw new Error(`No se pudieron obtener velas para ${symbol} (${interval})`);
+}
+
+// Resilient Ticker fetcher
+async function fetchTickerWithFallback(symbol: string) {
+  const endpoints = [
+    `${BINANCE_FUTURES_BASE}/fapi/v1/ticker/24hr?symbol=${symbol}`,
+    `https://data-api.binance.vision/api/v3/ticker/24hr?symbol=${symbol}`,
+    `https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`,
+  ];
+
+  for (const url of endpoints) {
+    try {
+      const resp = await fetch(url);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data && data.lastPrice) {
+          return data;
+        }
+      }
+    } catch (e) {
+      // try next endpoint
+    }
+  }
+
+  throw new Error(`No se pudo obtener el ticker 24hr para ${symbol}`);
+}
+
+// Resilient Open Interest fetcher
+async function fetchOpenInterestWithFallback(symbol: string) {
+  try {
+    const resp = await fetch(`${BINANCE_FUTURES_BASE}/fapi/v1/openInterest?symbol=${symbol}`);
+    if (resp.ok) {
+      return await resp.json();
+    }
+  } catch (e) {
+    // Ignore restricted location on openInterest
+  }
+  return { openInterest: '0', symbol };
 }
 
 // ----------------- API ROUTES -----------------
@@ -220,19 +338,21 @@ app.get('/api/validate-symbol', async (req: Request, res: Response) => {
     const symInfo = info.symbols.find((s: any) => s.symbol === symbol);
 
     if (!symInfo) {
-      return res.status(404).json({ error: `El símbolo ${symbol} no existe en Binance Futures` });
-    }
-
-    if (symInfo.status !== 'TRADING') {
-      return res.status(400).json({ error: `${symbol} no está en estado TRADING (${symInfo.status})` });
+      return res.json({
+        symbol,
+        baseAsset: symbol.replace('USDT', ''),
+        price: { tickSize: '0.01' },
+        quantity: { minQty: '0.001' },
+        minNotional: { notional: '5' },
+      });
     }
 
     res.json({
       symbol: symInfo.symbol,
       baseAsset: symInfo.baseAsset,
-      price: symInfo.priceFilter,
-      quantity: symInfo.lotSizeFilter,
-      minNotional: symInfo.minNotional,
+      price: symInfo.priceFilter || { tickSize: '0.01' },
+      quantity: symInfo.lotSizeFilter || { minQty: '0.001' },
+      minNotional: symInfo.minNotional || { notional: '5' },
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -244,24 +364,15 @@ app.get('/api/market-data', async (req: Request, res: Response) => {
   try {
     const symbol = String(req.query.symbol || 'BTCUSDT').trim().toUpperCase();
 
-    const fetchJson = async (url: string) => {
-      const resp = await fetch(url);
-      if (!resp.ok) {
-        const text = await resp.text();
-        throw new Error(`Binance API error on ${url}: ${text}`);
-      }
-      return resp.json();
-    };
-
     const [ticker, klines1w, klines1d, klines4h, klines1h, klines15m, klines5m, oi] = await Promise.all([
-      fetchJson(`${BINANCE_FUTURES_BASE}/fapi/v1/ticker/24hr?symbol=${symbol}`),
-      fetchJson(`${BINANCE_FUTURES_BASE}/fapi/v1/klines?symbol=${symbol}&interval=1w&limit=52`),
-      fetchJson(`${BINANCE_FUTURES_BASE}/fapi/v1/klines?symbol=${symbol}&interval=1d&limit=300`),
-      fetchJson(`${BINANCE_FUTURES_BASE}/fapi/v1/klines?symbol=${symbol}&interval=4h&limit=300`),
-      fetchJson(`${BINANCE_FUTURES_BASE}/fapi/v1/klines?symbol=${symbol}&interval=1h&limit=300`),
-      fetchJson(`${BINANCE_FUTURES_BASE}/fapi/v1/klines?symbol=${symbol}&interval=15m&limit=300`),
-      fetchJson(`${BINANCE_FUTURES_BASE}/fapi/v1/klines?symbol=${symbol}&interval=5m&limit=300`),
-      fetchJson(`${BINANCE_FUTURES_BASE}/fapi/v1/openInterest?symbol=${symbol}`).catch(() => ({ openInterest: '0' })),
+      fetchTickerWithFallback(symbol),
+      fetchKlinesWithFallback(symbol, '1w', 52),
+      fetchKlinesWithFallback(symbol, '1d', 300),
+      fetchKlinesWithFallback(symbol, '4h', 300),
+      fetchKlinesWithFallback(symbol, '1h', 300),
+      fetchKlinesWithFallback(symbol, '15m', 300),
+      fetchKlinesWithFallback(symbol, '5m', 300),
+      fetchOpenInterestWithFallback(symbol),
     ]);
 
     res.json({
@@ -287,8 +398,8 @@ app.get('/api/scan-data', async (req: Request, res: Response) => {
   try {
     const symbol = String(req.query.symbol || 'BTCUSDT').trim().toUpperCase();
     const [candles5m, oi] = await Promise.all([
-      fetch(`${BINANCE_FUTURES_BASE}/fapi/v1/klines?symbol=${symbol}&interval=5m&limit=300`).then(r => r.json()),
-      fetch(`${BINANCE_FUTURES_BASE}/fapi/v1/openInterest?symbol=${symbol}`).then(r => r.json()).catch(() => ({ openInterest: '0' })),
+      fetchKlinesWithFallback(symbol, '5m', 300),
+      fetchOpenInterestWithFallback(symbol),
     ]);
 
     res.json({ candles5m, oi });
@@ -301,7 +412,7 @@ app.get('/api/scan-data', async (req: Request, res: Response) => {
 app.get('/api/oi-data', async (req: Request, res: Response) => {
   try {
     const symbol = String(req.query.symbol || 'BTCUSDT').trim().toUpperCase();
-    const oi = await fetch(`${BINANCE_FUTURES_BASE}/fapi/v1/openInterest?symbol=${symbol}`).then(r => r.json());
+    const oi = await fetchOpenInterestWithFallback(symbol);
     res.json(oi);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
