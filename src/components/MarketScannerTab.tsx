@@ -27,6 +27,9 @@ import {
   BarChart3,
   Sparkles,
   Info,
+  TrendingUp,
+  TrendingDown,
+  Droplets,
 } from 'lucide-react';
 
 export interface CategoryDef {
@@ -150,6 +153,7 @@ type SortField =
   | 'weekChangePercent'
   | 'rvol'
   | 'rsi14d'
+  | 'trend'
   | 'marketCap'
   | 'volume24h'
   | 'epsGrowthYear';
@@ -369,12 +373,17 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
         }
       }
 
-      // Strategy Preset Filter
+      // Strategy Preset & Quick Filters
+      if (strategyPreset === 'RVOL_HIGH') return item.rvol >= 1.5;
+      if (strategyPreset === 'RSI_OVERBOUGHT') return (item.rsi14d ?? 50) >= 70 || item.rsi15m >= 70 || item.rsi1h >= 70;
+      if (strategyPreset === 'RSI_OVERSOLD') return (item.rsi14d ?? 50) <= 30 || item.rsi15m <= 30 || item.rsi1h <= 30;
+      if (strategyPreset === 'TREND_BULLISH') return item.trend === 'Alcista' || item.signal === 'LONG';
+      if (strategyPreset === 'TREND_BEARISH') return item.trend === 'Bajista' || item.signal === 'SHORT';
       if (strategyPreset === 'BREAKOUTS') return item.isBreakout;
       if (strategyPreset === 'SWING_PULLBACKS') return item.isSwingPullback;
       if (strategyPreset === 'GROWTH_CANSLIM') return item.isGrowthCanslim;
-      if (strategyPreset === 'LONG') return item.signal === 'LONG';
-      if (strategyPreset === 'SHORT') return item.signal === 'SHORT';
+      if (strategyPreset === 'LONG') return item.signal === 'LONG' || item.trend === 'Alcista';
+      if (strategyPreset === 'SHORT') return item.signal === 'SHORT' || item.trend === 'Bajista';
       if (strategyPreset === 'VOL') return item.rvol >= 1.5;
       if (strategyPreset === 'SQUEEZE') return item.bollingerSqueeze;
 
@@ -421,6 +430,12 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
   const breakoutCount = items.filter(i => i.isBreakout).length;
   const pullbackCount = items.filter(i => i.isSwingPullback).length;
   const canslimCount = items.filter(i => i.isGrowthCanslim).length;
+  const countRvol15 = items.filter(i => i.rvol >= 1.5).length;
+  const countRsiOverbought = items.filter(i => (i.rsi14d ?? 50) >= 70 || i.rsi15m >= 70 || i.rsi1h >= 70).length;
+  const countRsiOversold = items.filter(i => (i.rsi14d ?? 50) <= 30 || i.rsi15m <= 30 || i.rsi1h <= 30).length;
+  const countBullishTrend = items.filter(i => i.trend === 'Alcista' || i.signal === 'LONG').length;
+  const countBearishTrend = items.filter(i => i.trend === 'Bajista' || i.signal === 'SHORT').length;
+  const countSqueeze = items.filter(i => i.bollingerSqueeze).length;
 
   return (
     <div className="space-y-6">
@@ -567,7 +582,7 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
           </div>
         </div>
 
-        {/* 3. Categories Bar & Secondary Filters */}
+        {/* 3. Categories Bar & Search */}
         <div className="mt-4 pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
           {/* Category Chips */}
           <div className="flex flex-wrap items-center gap-1.5 text-xs font-mono">
@@ -597,66 +612,12 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
             ))}
           </div>
 
-          {/* Quick Signal Filter Chips */}
-          <div className="flex flex-wrap items-center gap-1.5 text-xs font-mono">
-            <button
-              onClick={() => setStrategyPreset('ALL')}
-              className={`px-2 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer ${
-                strategyPreset === 'ALL'
-                  ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold'
-                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Todos
-            </button>
-            <button
-              onClick={() => setStrategyPreset('LONG')}
-              className={`px-2 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer ${
-                strategyPreset === 'LONG'
-                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500'
-                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              🟢 Longs
-            </button>
-            <button
-              onClick={() => setStrategyPreset('SHORT')}
-              className={`px-2 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer ${
-                strategyPreset === 'SHORT'
-                  ? 'bg-red-500/20 text-red-300 border-red-500'
-                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              🔴 Shorts
-            </button>
-            <button
-              onClick={() => setStrategyPreset('VOL')}
-              className={`px-2 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer ${
-                strategyPreset === 'VOL'
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500'
-                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              ⚡ RVOL ≥ 1.5x
-            </button>
-            <button
-              onClick={() => setStrategyPreset('SQUEEZE')}
-              className={`px-2 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer ${
-                strategyPreset === 'SQUEEZE'
-                  ? 'bg-purple-500/20 text-purple-300 border-purple-500'
-                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              🎯 Squeeze
-            </button>
-          </div>
-
           {/* Search Input */}
-          <div className="relative w-full sm:w-56">
+          <div className="relative w-full sm:w-60">
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
               type="text"
-              placeholder="Buscar (TAO, BTC, SOL)..."
+              placeholder="Buscar símbolo (TAO, BTC, SOL)..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs font-mono text-white placeholder:text-slate-600 focus:outline-none focus:border-amber-400"
@@ -665,13 +626,146 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
         </div>
       </div>
 
-      {/* 4. ACTIVE STRATEGY EXPLANATION BANNER */}
+      {/* 4. BOTONES DE FILTRADO RÁPIDO (Directly above the Table) */}
+      <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 shadow-md">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-800/80 mb-3">
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-amber-400" />
+            <span className="text-xs font-bold font-mono text-slate-200 uppercase tracking-wider">
+              Filtros Rápidos Cuantitativos
+            </span>
+          </div>
+          <span className="text-[11px] font-mono text-slate-400">
+            Mostrando <strong className="text-amber-300">{sortedItems.length}</strong> de <strong className="text-slate-300">{items.length}</strong> criptoactivos
+          </span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
+          {/* 1. Todos */}
+          <button
+            onClick={() => setStrategyPreset('ALL')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
+              strategyPreset === 'ALL'
+                ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md ring-1 ring-amber-400'
+                : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-white hover:border-slate-700'
+            }`}
+          >
+            <span>Todos</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded font-mono ${strategyPreset === 'ALL' ? 'bg-slate-950/20 text-slate-950 font-black' : 'bg-slate-800 text-slate-400'}`}>
+              {items.length}
+            </span>
+          </button>
+
+          {/* 2. RVOL > 1.5 */}
+          <button
+            onClick={() => setStrategyPreset(strategyPreset === 'RVOL_HIGH' ? 'ALL' : 'RVOL_HIGH')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
+              strategyPreset === 'RVOL_HIGH'
+                ? 'bg-amber-500/20 text-amber-300 border-amber-400 shadow-md ring-1 ring-amber-400/50 font-black'
+                : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-amber-300 hover:border-amber-500/50'
+            }`}
+          >
+            <Zap className="w-3.5 h-3.5 text-amber-400" />
+            <span>RVOL &gt; 1.5</span>
+            <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded font-mono">
+              {countRvol15}
+            </span>
+          </button>
+
+          {/* 3. RSI sobrecomprado (>70) */}
+          <button
+            onClick={() => setStrategyPreset(strategyPreset === 'RSI_OVERBOUGHT' ? 'ALL' : 'RSI_OVERBOUGHT')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
+              strategyPreset === 'RSI_OVERBOUGHT'
+                ? 'bg-red-500/20 text-red-300 border-red-400 shadow-md ring-1 ring-red-400/50 font-black'
+                : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-red-300 hover:border-red-500/50'
+            }`}
+          >
+            <Flame className="w-3.5 h-3.5 text-red-400" />
+            <span>RSI sobrecomprado (&gt;70)</span>
+            <span className="text-[10px] bg-red-500/20 text-red-300 border border-red-500/30 px-1.5 py-0.2 rounded font-mono">
+              {countRsiOverbought}
+            </span>
+          </button>
+
+          {/* 4. RSI sobrevendido (<30) */}
+          <button
+            onClick={() => setStrategyPreset(strategyPreset === 'RSI_OVERSOLD' ? 'ALL' : 'RSI_OVERSOLD')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
+              strategyPreset === 'RSI_OVERSOLD'
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400 shadow-md ring-1 ring-emerald-400/50 font-black'
+                : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-emerald-300 hover:border-emerald-500/50'
+            }`}
+          >
+            <Droplets className="w-3.5 h-3.5 text-emerald-400" />
+            <span>RSI sobrevendido (&lt;30)</span>
+            <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.2 rounded font-mono">
+              {countRsiOversold}
+            </span>
+          </button>
+
+          {/* 5. Tendencia Alcista */}
+          <button
+            onClick={() => setStrategyPreset(strategyPreset === 'TREND_BULLISH' ? 'ALL' : 'TREND_BULLISH')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
+              strategyPreset === 'TREND_BULLISH'
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400 shadow-md ring-1 ring-emerald-400/50 font-black'
+                : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-emerald-300 hover:border-emerald-500/50'
+            }`}
+          >
+            <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Tendencia Alcista</span>
+            <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.2 rounded font-mono">
+              {countBullishTrend}
+            </span>
+          </button>
+
+          {/* 6. Tendencia Bajista */}
+          <button
+            onClick={() => setStrategyPreset(strategyPreset === 'TREND_BEARISH' ? 'ALL' : 'TREND_BEARISH')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
+              strategyPreset === 'TREND_BEARISH'
+                ? 'bg-red-500/20 text-red-300 border-red-400 shadow-md ring-1 ring-red-400/50 font-black'
+                : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-red-300 hover:border-red-500/50'
+            }`}
+          >
+            <TrendingDown className="w-3.5 h-3.5 text-red-400" />
+            <span>Tendencia Bajista</span>
+            <span className="text-[10px] bg-red-500/20 text-red-300 border border-red-500/30 px-1.5 py-0.2 rounded font-mono">
+              {countBearishTrend}
+            </span>
+          </button>
+
+          {/* Squeeze */}
+          <button
+            onClick={() => setStrategyPreset(strategyPreset === 'SQUEEZE' ? 'ALL' : 'SQUEEZE')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
+              strategyPreset === 'SQUEEZE'
+                ? 'bg-purple-500/20 text-purple-300 border-purple-400 shadow-md ring-1 ring-purple-400/50 font-black'
+                : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-purple-300 hover:border-purple-500/50'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5 text-purple-400" />
+            <span>Squeeze BB</span>
+            <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded font-mono">
+              {countSqueeze}
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* 5. ACTIVE STRATEGY EXPLANATION BANNER */}
       {strategyPreset !== 'ALL' && (
-        <div className="bg-slate-900/90 border border-amber-500/30 rounded-xl p-3.5 flex items-start gap-3 text-xs font-mono">
+        <div className="bg-slate-900/90 border border-amber-500/30 rounded-xl p-3.5 flex items-start gap-3 text-xs font-mono shadow-sm">
           <Info className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <span className="font-bold text-amber-300 uppercase">
+                {strategyPreset === 'RVOL_HIGH' && 'Filtro Activo: Volumen Relativo Anormal (RVOL > 1.5x)'}
+                {strategyPreset === 'RSI_OVERBOUGHT' && 'Filtro Activo: RSI Sobrecomprado (> 70) - Riesgo de Agotamiento / Reversión'}
+                {strategyPreset === 'RSI_OVERSOLD' && 'Filtro Activo: RSI Sobrevendido (< 30) - Zona de Descuento / Rebote Swing'}
+                {strategyPreset === 'TREND_BULLISH' && 'Filtro Activo: Tendencia Alcista Confirmada (Precio > Medias Móviles)'}
+                {strategyPreset === 'TREND_BEARISH' && 'Filtro Activo: Tendencia Bajista Confirmada (Precio < Medias Móviles)'}
                 {strategyPreset === 'BREAKOUTS' && 'Filtro Activo: Rupturas de Momento (Breakouts)'}
                 {strategyPreset === 'SWING_PULLBACKS' && 'Filtro Activo: Retrocesos en Tendencia (Swing Pullbacks)'}
                 {strategyPreset === 'GROWTH_CANSLIM' && 'Filtro Activo: Crecimiento con Fundamentales Fuertes (CANSLIM)'}
@@ -685,6 +779,11 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
               </span>
             </div>
             <p className="text-slate-400 text-[11px] mt-0.5">
+              {strategyPreset === 'RVOL_HIGH' && 'Mostrando pares que están negociando con un volumen al menos 50% superior a su promedio de 20 periodos.'}
+              {strategyPreset === 'RSI_OVERBOUGHT' && 'Filtrando criptoactivos con RSI superior a 70 puntos, indicando alta tensión compradora o sobreextensión.'}
+              {strategyPreset === 'RSI_OVERSOLD' && 'Filtrando criptoactivos con RSI inferior a 30 puntos, ideales para buscar rebotes por absorción.'}
+              {strategyPreset === 'TREND_BULLISH' && 'Mostrando pares con estructura alcista en temporalidades 15M/1H y medias alineadas favorablemente.'}
+              {strategyPreset === 'TREND_BEARISH' && 'Mostrando pares con estructura bajista en temporalidades 15M/1H y presión vendedora predominante.'}
               {strategyPreset === 'BREAKOUTS' && 'Detectando criptoactivos con Market Cap ≥ $2B, RVOL > 1.5x, cotizando sobre SMA 20, 50 y 200, en zona de máximos anuales.'}
               {strategyPreset === 'SWING_PULLBACKS' && 'Detectando proyectos en tendencia alcista estructural (Precio > SMA 200) que han sufrido una caída semanal con RSI(14) en sobreventa o zona baja (≤ 40).'}
               {strategyPreset === 'GROWTH_CANSLIM' && 'Filtrando redes con alto crecimiento fundamental (>20%), alta retención y precio por encima de su SMA 200.'}
@@ -703,106 +802,129 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
         </div>
       )}
 
-      {/* 5. INSTITUTIONAL FINANCIAL DATA TABLE (Primary View) */}
+      {/* 6. TABLA DINÁMICA DE MERCADO (Formato Institucional Interactivo) */}
       <div className="bg-slate-900/90 border border-slate-800 rounded-xl shadow-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs font-mono border-collapse">
-            {/* Table Header */}
+            {/* Table Header con columnas ordenables */}
             <thead>
               <tr className="bg-slate-950 border-b border-slate-800 text-slate-400 text-[11px] uppercase tracking-wider select-none">
+                {/* 1. Símbolo (Ordenable) */}
                 <th
                   onClick={() => handleSort('symbol')}
-                  className="py-3 px-4 font-bold cursor-pointer hover:text-slate-200 transition-colors"
+                  className={`py-3.5 px-4 font-bold cursor-pointer transition-colors ${sortField === 'symbol' ? 'text-amber-300 bg-slate-900/80' : 'hover:text-slate-200'}`}
                 >
-                  <div className="flex items-center gap-1">
-                    <span>Par / Símbolo</span>
-                    {sortField === 'symbol' ? (sortAsc ? <ChevronUp className="w-3 h-3 text-amber-400" /> : <ChevronDown className="w-3 h-3 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                  <div className="flex items-center gap-1.5">
+                    <span>Símbolo</span>
+                    {sortField === 'symbol' ? (sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-amber-400" /> : <ChevronDown className="w-3.5 h-3.5 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
                   </div>
                 </th>
 
+                {/* 2. Precio USD (Ordenable) */}
                 <th
                   onClick={() => handleSort('price')}
-                  className="py-3 px-3 font-bold text-right cursor-pointer hover:text-slate-200 transition-colors"
+                  className={`py-3.5 px-3 font-bold text-right cursor-pointer transition-colors ${sortField === 'price' ? 'text-amber-300 bg-slate-900/80' : 'hover:text-slate-200'}`}
                 >
-                  <div className="flex items-center justify-end gap-1">
+                  <div className="flex items-center justify-end gap-1.5">
                     <span>Precio USD</span>
-                    {sortField === 'price' ? (sortAsc ? <ChevronUp className="w-3 h-3 text-amber-400" /> : <ChevronDown className="w-3 h-3 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                    {sortField === 'price' ? (sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-amber-400" /> : <ChevronDown className="w-3.5 h-3.5 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
                   </div>
                 </th>
 
+                {/* 3. Var 24h % (Ordenable) */}
                 <th
                   onClick={() => handleSort('change24h')}
-                  className="py-3 px-3 font-bold text-right cursor-pointer hover:text-slate-200 transition-colors"
+                  className={`py-3.5 px-3 font-bold text-right cursor-pointer transition-colors ${sortField === 'change24h' ? 'text-amber-300 bg-slate-900/80' : 'hover:text-slate-200'}`}
                 >
-                  <div className="flex items-center justify-end gap-1">
+                  <div className="flex items-center justify-end gap-1.5">
                     <span>24h %</span>
-                    {sortField === 'change24h' ? (sortAsc ? <ChevronUp className="w-3 h-3 text-amber-400" /> : <ChevronDown className="w-3 h-3 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                    {sortField === 'change24h' ? (sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-amber-400" /> : <ChevronDown className="w-3.5 h-3.5 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
                   </div>
                 </th>
 
+                {/* 4. Var 1 Sem % (Ordenable) */}
                 <th
                   onClick={() => handleSort('weekChangePercent')}
-                  className="py-3 px-3 font-bold text-right cursor-pointer hover:text-slate-200 transition-colors"
+                  className={`py-3.5 px-3 font-bold text-right cursor-pointer transition-colors ${sortField === 'weekChangePercent' ? 'text-amber-300 bg-slate-900/80' : 'hover:text-slate-200'}`}
                 >
-                  <div className="flex items-center justify-end gap-1">
+                  <div className="flex items-center justify-end gap-1.5">
                     <span>1 Sem %</span>
-                    {sortField === 'weekChangePercent' ? (sortAsc ? <ChevronUp className="w-3 h-3 text-amber-400" /> : <ChevronDown className="w-3 h-3 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                    {sortField === 'weekChangePercent' ? (sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-amber-400" /> : <ChevronDown className="w-3.5 h-3.5 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
                   </div>
                 </th>
 
+                {/* 5. RVOL (Ordenable) */}
                 <th
                   onClick={() => handleSort('rvol')}
-                  className="py-3 px-3 font-bold text-center cursor-pointer hover:text-slate-200 transition-colors"
+                  className={`py-3.5 px-3 font-bold text-center cursor-pointer transition-colors ${sortField === 'rvol' ? 'text-amber-300 bg-slate-900/80' : 'hover:text-slate-200'}`}
                 >
-                  <div className="flex items-center justify-center gap-1">
+                  <div className="flex items-center justify-center gap-1.5">
                     <span>RVOL</span>
-                    {sortField === 'rvol' ? (sortAsc ? <ChevronUp className="w-3 h-3 text-amber-400" /> : <ChevronDown className="w-3 h-3 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                    {sortField === 'rvol' ? (sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-amber-400" /> : <ChevronDown className="w-3.5 h-3.5 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
                   </div>
                 </th>
 
+                {/* 6. RSI (14) (Ordenable) */}
                 <th
                   onClick={() => handleSort('rsi14d')}
-                  className="py-3 px-3 font-bold text-center cursor-pointer hover:text-slate-200 transition-colors"
+                  className={`py-3.5 px-3 font-bold text-center cursor-pointer transition-colors ${sortField === 'rsi14d' ? 'text-amber-300 bg-slate-900/80' : 'hover:text-slate-200'}`}
                 >
-                  <div className="flex items-center justify-center gap-1">
+                  <div className="flex items-center justify-center gap-1.5">
                     <span>RSI (14)</span>
-                    {sortField === 'rsi14d' ? (sortAsc ? <ChevronUp className="w-3 h-3 text-amber-400" /> : <ChevronDown className="w-3 h-3 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                    {sortField === 'rsi14d' ? (sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-amber-400" /> : <ChevronDown className="w-3.5 h-3.5 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
                   </div>
                 </th>
 
-                <th className="py-3 px-3 font-bold text-center">
+                {/* 7. Tendencia (Ordenable) */}
+                <th
+                  onClick={() => handleSort('trend')}
+                  className={`py-3.5 px-3 font-bold text-center cursor-pointer transition-colors ${sortField === 'trend' ? 'text-amber-300 bg-slate-900/80' : 'hover:text-slate-200'}`}
+                >
+                  <div className="flex items-center justify-center gap-1.5">
+                    <span>Tendencia</span>
+                    {sortField === 'trend' ? (sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-amber-400" /> : <ChevronDown className="w-3.5 h-3.5 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                  </div>
+                </th>
+
+                {/* 8. Medias Móviles */}
+                <th className="py-3.5 px-3 font-bold text-center">
                   <span>Medias (20/50/200)</span>
                 </th>
 
-                <th className="py-3 px-3 font-bold text-center">
+                {/* 9. Rango 52S */}
+                <th className="py-3.5 px-3 font-bold text-center">
                   <span>Rango 52S</span>
                 </th>
 
+                {/* 10. Cap. Mercado (Ordenable) */}
                 <th
                   onClick={() => handleSort('marketCap')}
-                  className="py-3 px-3 font-bold text-right cursor-pointer hover:text-slate-200 transition-colors"
+                  className={`py-3.5 px-3 font-bold text-right cursor-pointer transition-colors ${sortField === 'marketCap' ? 'text-amber-300 bg-slate-900/80' : 'hover:text-slate-200'}`}
                 >
-                  <div className="flex items-center justify-end gap-1">
+                  <div className="flex items-center justify-end gap-1.5">
                     <span>Cap. Mercado</span>
-                    {sortField === 'marketCap' ? (sortAsc ? <ChevronUp className="w-3 h-3 text-amber-400" /> : <ChevronDown className="w-3 h-3 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                    {sortField === 'marketCap' ? (sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-amber-400" /> : <ChevronDown className="w-3.5 h-3.5 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
                   </div>
                 </th>
 
+                {/* 11. Crecimiento / CANSLIM (Ordenable) */}
                 <th
                   onClick={() => handleSort('epsGrowthYear')}
-                  className="py-3 px-3 font-bold text-right cursor-pointer hover:text-slate-200 transition-colors"
+                  className={`py-3.5 px-3 font-bold text-right cursor-pointer transition-colors ${sortField === 'epsGrowthYear' ? 'text-amber-300 bg-slate-900/80' : 'hover:text-slate-200'}`}
                 >
-                  <div className="flex items-center justify-end gap-1">
+                  <div className="flex items-center justify-end gap-1.5">
                     <span>Crecimiento Red</span>
-                    {sortField === 'epsGrowthYear' ? (sortAsc ? <ChevronUp className="w-3 h-3 text-amber-400" /> : <ChevronDown className="w-3 h-3 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                    {sortField === 'epsGrowthYear' ? (sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-amber-400" /> : <ChevronDown className="w-3.5 h-3.5 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
                   </div>
                 </th>
 
-                <th className="py-3 px-3 font-bold text-center">
+                {/* 12. Estrategias */}
+                <th className="py-3.5 px-3 font-bold text-center">
                   <span>Estrategias</span>
                 </th>
 
-                <th className="py-3 px-4 font-bold text-center">
+                {/* 13. Acción */}
+                <th className="py-3.5 px-4 font-bold text-center">
                   <span>Acción</span>
                 </th>
               </tr>
@@ -812,7 +934,7 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
             <tbody className="divide-y divide-slate-800/60">
               {sortedItems.length === 0 ? (
                 <tr>
-                  <td colSpan={12} className="py-12 text-center text-slate-500 font-mono">
+                  <td colSpan={13} className="py-12 text-center text-slate-500 font-mono">
                     <p className="text-sm">No se encontraron pares cripto que cumplan con los filtros activos.</p>
                     <button
                       onClick={() => {
@@ -854,7 +976,7 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
                               )}
                             </div>
                             <span className="text-[10px] text-slate-400">
-                              Tendencia 1H: {item.trend}
+                              Sector: {SCANNER_CATEGORIES.find(c => c.symbols.includes(item.symbol))?.shortName || 'General'}
                             </span>
                           </div>
                         </div>
@@ -910,9 +1032,9 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
                         <div className="inline-flex flex-col items-center">
                           <span
                             className={`font-bold ${
-                              (item.rsi14d || 50) <= 35
+                              (item.rsi14d || 50) <= 30
                                 ? 'text-emerald-400'
-                                : (item.rsi14d || 50) >= 68
+                                : (item.rsi14d || 50) >= 70
                                 ? 'text-red-400'
                                 : 'text-slate-300'
                             }`}
@@ -922,9 +1044,9 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
                           <div className="w-10 h-1 bg-slate-800 rounded-full mt-1 overflow-hidden">
                             <div
                               className={`h-full ${
-                                (item.rsi14d || 50) <= 35
+                                (item.rsi14d || 50) <= 30
                                   ? 'bg-emerald-500'
-                                  : (item.rsi14d || 50) >= 68
+                                  : (item.rsi14d || 50) >= 70
                                   ? 'bg-red-500'
                                   : 'bg-amber-500'
                               }`}
@@ -934,7 +1056,34 @@ export const MarketScannerTab: React.FC<MarketScannerTabProps> = ({
                         </div>
                       </td>
 
-                      {/* 7. Medias Móviles (SMA 20/50/200) */}
+                      {/* 7. Tendencia */}
+                      <td className="py-3 px-3 text-center">
+                        <span
+                          className={`px-2 py-0.5 rounded text-[11px] font-bold inline-flex items-center gap-1 ${
+                            item.trend === 'Alcista' || item.signal === 'LONG'
+                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                              : item.trend === 'Bajista' || item.signal === 'SHORT'
+                              ? 'bg-red-500/20 text-red-300 border border-red-500/40'
+                              : 'bg-slate-800 text-slate-400'
+                          }`}
+                        >
+                          {item.trend === 'Alcista' || item.signal === 'LONG' ? (
+                            <>
+                              <TrendingUp className="w-3 h-3 text-emerald-400" />
+                              Alcista
+                            </>
+                          ) : item.trend === 'Bajista' || item.signal === 'SHORT' ? (
+                            <>
+                              <TrendingDown className="w-3 h-3 text-red-400" />
+                              Bajista
+                            </>
+                          ) : (
+                            'Neutral'
+                          )}
+                        </span>
+                      </td>
+
+                      {/* 8. Medias Móviles (SMA 20/50/200) */}
                       <td className="py-3 px-3 text-center">
                         <div className="flex items-center justify-center gap-1 text-[10px]">
                           <span

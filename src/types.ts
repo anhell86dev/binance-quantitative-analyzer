@@ -210,7 +210,21 @@ export interface RiskCalculatorResult {
 }
 
 // 3. Multi-Pair Market Scanner Types
-export type StrategyPreset = 'ALL' | 'BREAKOUTS' | 'SWING_PULLBACKS' | 'GROWTH_CANSLIM' | 'LONG' | 'SHORT' | 'VOL' | 'SQUEEZE' | 'FUNDING_CARRY';
+export type StrategyPreset =
+  | 'ALL'
+  | 'RVOL_HIGH'
+  | 'RSI_OVERBOUGHT'
+  | 'RSI_OVERSOLD'
+  | 'TREND_BULLISH'
+  | 'TREND_BEARISH'
+  | 'BREAKOUTS'
+  | 'SWING_PULLBACKS'
+  | 'GROWTH_CANSLIM'
+  | 'LONG'
+  | 'SHORT'
+  | 'VOL'
+  | 'SQUEEZE'
+  | 'FUNDING_CARRY';
 
 export interface ScannerItem {
   symbol: string;

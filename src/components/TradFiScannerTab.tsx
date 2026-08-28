@@ -32,6 +32,7 @@ import {
   BarChart3,
   SlidersHorizontal,
   Info,
+  Droplets,
 } from 'lucide-react';
 
 export interface TradFiCategoryDef {
@@ -541,6 +542,7 @@ type SortField =
   | 'weekChangePercent'
   | 'rvol'
   | 'rsi14d'
+  | 'trend'
   | 'marketCap'
   | 'avgVolume'
   | 'epsGrowthYear'
@@ -803,12 +805,17 @@ export const TradFiScannerTab: React.FC<TradFiScannerTabProps> = ({
         if (!matchSym && !matchName && !matchAsset) return false;
       }
 
-      // Strategy Preset Filter
+      // Strategy Preset & Quick Filters
+      if (strategyPreset === 'RVOL_HIGH') return item.rvol >= 1.5;
+      if (strategyPreset === 'RSI_OVERBOUGHT') return (item.rsi14d ?? 50) >= 70 || item.rsi15m >= 70 || item.rsi1h >= 70;
+      if (strategyPreset === 'RSI_OVERSOLD') return (item.rsi14d ?? 50) <= 30 || item.rsi15m <= 30 || item.rsi1h <= 30;
+      if (strategyPreset === 'TREND_BULLISH') return item.trend === 'Alcista' || item.signal === 'LONG';
+      if (strategyPreset === 'TREND_BEARISH') return item.trend === 'Bajista' || item.signal === 'SHORT';
       if (strategyPreset === 'BREAKOUTS') return item.isBreakout;
       if (strategyPreset === 'SWING_PULLBACKS') return item.isSwingPullback;
       if (strategyPreset === 'GROWTH_CANSLIM') return item.isGrowthCanslim;
-      if (strategyPreset === 'LONG') return item.signal === 'LONG';
-      if (strategyPreset === 'SHORT') return item.signal === 'SHORT';
+      if (strategyPreset === 'LONG') return item.signal === 'LONG' || item.trend === 'Alcista';
+      if (strategyPreset === 'SHORT') return item.signal === 'SHORT' || item.trend === 'Bajista';
       if (strategyPreset === 'VOL') return item.rvol >= 1.5;
       if (strategyPreset === 'SQUEEZE') return item.bollingerSqueeze;
       if (strategyPreset === 'FUNDING_CARRY') return Math.abs(item.fundingRate) >= 0.0001;
@@ -860,10 +867,16 @@ export const TradFiScannerTab: React.FC<TradFiScannerTabProps> = ({
     return `${n}`;
   };
 
-  // Counts for strategic pills
+  // Counts for strategic pills & quick filters
   const breakoutCount = items.filter(i => i.isBreakout).length;
   const pullbackCount = items.filter(i => i.isSwingPullback).length;
   const canslimCount = items.filter(i => i.isGrowthCanslim).length;
+  const countRvol15 = items.filter(i => i.rvol >= 1.5).length;
+  const countRsiOverbought = items.filter(i => (i.rsi14d ?? 50) >= 70 || i.rsi15m >= 70 || i.rsi1h >= 70).length;
+  const countRsiOversold = items.filter(i => (i.rsi14d ?? 50) <= 30 || i.rsi15m <= 30 || i.rsi1h <= 30).length;
+  const countBullishTrend = items.filter(i => i.trend === 'Alcista' || i.signal === 'LONG').length;
+  const countBearishTrend = items.filter(i => i.trend === 'Bajista' || i.signal === 'SHORT').length;
+  const countSqueeze = items.filter(i => i.bollingerSqueeze).length;
 
   return (
     <div className="space-y-6">
@@ -1010,7 +1023,7 @@ export const TradFiScannerTab: React.FC<TradFiScannerTabProps> = ({
           </div>
         </div>
 
-        {/* 3. Sectors Bar & Secondary Filters */}
+        {/* 3. Sectors Bar & Search */}
         <div className="mt-4 pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
           {/* Sector Buttons */}
           <div className="flex flex-wrap items-center gap-1.5 text-xs font-mono">
@@ -1030,60 +1043,6 @@ export const TradFiScannerTab: React.FC<TradFiScannerTabProps> = ({
             ))}
           </div>
 
-          {/* Quick Signal Filter Chips */}
-          <div className="flex flex-wrap items-center gap-1.5 text-xs font-mono">
-            <button
-              onClick={() => setStrategyPreset('ALL')}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer ${
-                strategyPreset === 'ALL'
-                  ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold'
-                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Todos ({items.length})
-            </button>
-            <button
-              onClick={() => setStrategyPreset('LONG')}
-              className={`px-2 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer ${
-                strategyPreset === 'LONG'
-                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500'
-                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              🟢 Longs
-            </button>
-            <button
-              onClick={() => setStrategyPreset('SHORT')}
-              className={`px-2 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer ${
-                strategyPreset === 'SHORT'
-                  ? 'bg-red-500/20 text-red-300 border-red-500'
-                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              🔴 Shorts
-            </button>
-            <button
-              onClick={() => setStrategyPreset('VOL')}
-              className={`px-2 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer ${
-                strategyPreset === 'VOL'
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500'
-                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              ⚡ RVOL ≥ 1.5x
-            </button>
-            <button
-              onClick={() => setStrategyPreset('SQUEEZE')}
-              className={`px-2 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer ${
-                strategyPreset === 'SQUEEZE'
-                  ? 'bg-purple-500/20 text-purple-300 border-purple-500'
-                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              🎯 Squeeze
-            </button>
-          </div>
-
           {/* Search Input */}
           <div className="relative w-full sm:w-60">
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -1096,15 +1055,152 @@ export const TradFiScannerTab: React.FC<TradFiScannerTabProps> = ({
             />
           </div>
         </div>
+
+        {/* 4. Quick Quantitative Filter Buttons */}
+        <div className="mt-3 pt-3 border-t border-slate-800/80 flex flex-wrap items-center gap-2 text-xs font-mono">
+          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1 mr-1">
+            <SlidersHorizontal className="w-3 h-3 text-amber-400" />
+            Filtros Rápidos:
+          </span>
+
+          <button
+            onClick={() => setStrategyPreset('ALL')}
+            className={`px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer ${
+              strategyPreset === 'ALL'
+                ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold shadow-sm'
+                : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+            }`}
+          >
+            Todos ({items.length})
+          </button>
+
+          <button
+            onClick={() => setStrategyPreset(strategyPreset === 'RVOL_HIGH' ? 'ALL' : 'RVOL_HIGH')}
+            className={`px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer flex items-center gap-1 ${
+              strategyPreset === 'RVOL_HIGH' || strategyPreset === 'VOL'
+                ? 'bg-amber-500/20 text-amber-300 border-amber-500 font-bold shadow-sm'
+                : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-amber-300 hover:border-slate-700'
+            }`}
+          >
+            <Zap className="w-3 h-3 text-amber-400" />
+            <span>RVOL &gt; 1.5</span>
+            <span className="text-[10px] opacity-75 font-mono">({countRvol15})</span>
+          </button>
+
+          <button
+            onClick={() => setStrategyPreset(strategyPreset === 'RSI_OVERBOUGHT' ? 'ALL' : 'RSI_OVERBOUGHT')}
+            className={`px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer flex items-center gap-1 ${
+              strategyPreset === 'RSI_OVERBOUGHT'
+                ? 'bg-red-500/20 text-red-300 border-red-500 font-bold shadow-sm'
+                : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-red-300 hover:border-slate-700'
+            }`}
+          >
+            <Flame className="w-3 h-3 text-red-400" />
+            <span>RSI sobrecomprado (&gt;70)</span>
+            <span className="text-[10px] opacity-75 font-mono">({countRsiOverbought})</span>
+          </button>
+
+          <button
+            onClick={() => setStrategyPreset(strategyPreset === 'RSI_OVERSOLD' ? 'ALL' : 'RSI_OVERSOLD')}
+            className={`px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer flex items-center gap-1 ${
+              strategyPreset === 'RSI_OVERSOLD'
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500 font-bold shadow-sm'
+                : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-emerald-300 hover:border-slate-700'
+            }`}
+          >
+            <Droplets className="w-3 h-3 text-cyan-400" />
+            <span>RSI sobrevendido (&lt;30)</span>
+            <span className="text-[10px] opacity-75 font-mono">({countRsiOversold})</span>
+          </button>
+
+          <button
+            onClick={() => setStrategyPreset(strategyPreset === 'TREND_BULLISH' ? 'ALL' : 'TREND_BULLISH')}
+            className={`px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer flex items-center gap-1 ${
+              strategyPreset === 'TREND_BULLISH' || strategyPreset === 'LONG'
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500 font-bold shadow-sm'
+                : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-emerald-300 hover:border-slate-700'
+            }`}
+          >
+            <TrendingUp className="w-3 h-3 text-emerald-400" />
+            <span>Tendencia Alcista</span>
+            <span className="text-[10px] opacity-75 font-mono">({countBullishTrend})</span>
+          </button>
+
+          <button
+            onClick={() => setStrategyPreset(strategyPreset === 'TREND_BEARISH' ? 'ALL' : 'TREND_BEARISH')}
+            className={`px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer flex items-center gap-1 ${
+              strategyPreset === 'TREND_BEARISH' || strategyPreset === 'SHORT'
+                ? 'bg-red-500/20 text-red-300 border-red-500 font-bold shadow-sm'
+                : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-red-300 hover:border-slate-700'
+            }`}
+          >
+            <TrendingDown className="w-3 h-3 text-red-400" />
+            <span>Tendencia Bajista</span>
+            <span className="text-[10px] opacity-75 font-mono">({countBearishTrend})</span>
+          </button>
+
+          <button
+            onClick={() => setStrategyPreset(strategyPreset === 'BREAKOUTS' ? 'ALL' : 'BREAKOUTS')}
+            className={`px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer flex items-center gap-1 ${
+              strategyPreset === 'BREAKOUTS'
+                ? 'bg-amber-500/20 text-amber-300 border-amber-500 font-bold shadow-sm'
+                : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-amber-300 hover:border-slate-700'
+            }`}
+          >
+            <Zap className="w-3 h-3 text-amber-400" />
+            <span>Rupturas ({breakoutCount})</span>
+          </button>
+
+          <button
+            onClick={() => setStrategyPreset(strategyPreset === 'SWING_PULLBACKS' ? 'ALL' : 'SWING_PULLBACKS')}
+            className={`px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer flex items-center gap-1 ${
+              strategyPreset === 'SWING_PULLBACKS'
+                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500 font-bold shadow-sm'
+                : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-cyan-300 hover:border-slate-700'
+            }`}
+          >
+            <RotateCcw className="w-3 h-3 text-cyan-400" />
+            <span>Pullbacks ({pullbackCount})</span>
+          </button>
+
+          <button
+            onClick={() => setStrategyPreset(strategyPreset === 'GROWTH_CANSLIM' ? 'ALL' : 'GROWTH_CANSLIM')}
+            className={`px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer flex items-center gap-1 ${
+              strategyPreset === 'GROWTH_CANSLIM'
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500 font-bold shadow-sm'
+                : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-emerald-300 hover:border-slate-700'
+            }`}
+          >
+            <BarChart3 className="w-3 h-3 text-emerald-400" />
+            <span>CANSLIM ({canslimCount})</span>
+          </button>
+
+          <button
+            onClick={() => setStrategyPreset(strategyPreset === 'SQUEEZE' ? 'ALL' : 'SQUEEZE')}
+            className={`px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer flex items-center gap-1 ${
+              strategyPreset === 'SQUEEZE'
+                ? 'bg-purple-500/20 text-purple-300 border-purple-500 font-bold shadow-sm'
+                : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-purple-300 hover:border-slate-700'
+            }`}
+          >
+            <Sparkles className="w-3 h-3 text-purple-400" />
+            <span>Squeeze ({countSqueeze})</span>
+          </button>
+        </div>
       </div>
 
-      {/* 4. ACTIVE STRATEGY EXPLANATION BANNER */}
+      {/* 5. ACTIVE STRATEGY EXPLANATION BANNER */}
       {strategyPreset !== 'ALL' && (
         <div className="bg-slate-900/90 border border-amber-500/30 rounded-xl p-3.5 flex items-start gap-3 text-xs font-mono">
           <Info className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <span className="font-bold text-amber-300 uppercase">
+                {strategyPreset === 'RVOL_HIGH' && 'Filtro Activo: Volumen Inusual (RVOL > 1.5)'}
+                {strategyPreset === 'RSI_OVERBOUGHT' && 'Filtro Activo: RSI Sobrecomprado (> 70)'}
+                {strategyPreset === 'RSI_OVERSOLD' && 'Filtro Activo: RSI Sobrevendido (< 30)'}
+                {strategyPreset === 'TREND_BULLISH' && 'Filtro Activo: Tendencia Alcista'}
+                {strategyPreset === 'TREND_BEARISH' && 'Filtro Activo: Tendencia Bajista'}
                 {strategyPreset === 'BREAKOUTS' && 'Filtro Activo: Rupturas de Momento (Breakouts)'}
                 {strategyPreset === 'SWING_PULLBACKS' && 'Filtro Activo: Retrocesos en Tendencia (Swing Pullbacks)'}
                 {strategyPreset === 'GROWTH_CANSLIM' && 'Filtro Activo: Crecimiento con Fundamentales Fuertes (CANSLIM)'}
@@ -1118,6 +1214,11 @@ export const TradFiScannerTab: React.FC<TradFiScannerTabProps> = ({
               </span>
             </div>
             <p className="text-slate-400 text-[11px] mt-0.5">
+              {strategyPreset === 'RVOL_HIGH' && 'Mostrando activos con volumen relativo superior a 1.5 veces el volumen medio típico.'}
+              {strategyPreset === 'RSI_OVERBOUGHT' && 'Mostrando activos con RSI en zona extrema de sobrecompra (>= 70), indicando posible agotamiento o fuerte impulso comprador.'}
+              {strategyPreset === 'RSI_OVERSOLD' && 'Mostrando activos con RSI en zona de sobreventa (<= 30), indicando posibles zonas de rebote o capitulación vendedora.'}
+              {strategyPreset === 'TREND_BULLISH' && 'Mostrando activos con estructura alcista o señal cuantitativa de compra.'}
+              {strategyPreset === 'TREND_BEARISH' && 'Mostrando activos con estructura bajista o señal cuantitativa de venta.'}
               {strategyPreset === 'BREAKOUTS' && 'Detectando activos con Market Cap ≥ $2B, Precio > $10, Volumen > 500K, RVOL > 1.5x, cotizando por encima de SMA 20, SMA 50 y SMA 200, en zona de máximos anuales.'}
               {strategyPreset === 'SWING_PULLBACKS' && 'Detectando empresas líquidas en tendencia alcista estructural (Precio > SMA 200) que han corregido en la semana con RSI(14) en sobreventa o zona baja (≤ 40) para compras a descuento.'}
               {strategyPreset === 'GROWTH_CANSLIM' && 'Detectando empresas líderes con crecimiento de EPS > 20%, crecimiento de ventas QoQ > 10%, ROE > 15% y soporte técnico alcista por encima de su SMA 200.'}
@@ -1136,7 +1237,7 @@ export const TradFiScannerTab: React.FC<TradFiScannerTabProps> = ({
         </div>
       )}
 
-      {/* 5. INSTITUTIONAL FINANCIAL DATA TABLE (Primary View) */}
+      {/* 6. INSTITUTIONAL FINANCIAL DATA TABLE (Primary View) */}
       <div className="bg-slate-900/90 border border-slate-800 rounded-xl shadow-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs font-mono border-collapse">
@@ -1203,6 +1304,16 @@ export const TradFiScannerTab: React.FC<TradFiScannerTabProps> = ({
                   </div>
                 </th>
 
+                <th
+                  onClick={() => handleSort('trend')}
+                  className="py-3 px-3 font-bold text-center cursor-pointer hover:text-slate-200 transition-colors"
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <span>Tendencia</span>
+                    {sortField === 'trend' ? (sortAsc ? <ChevronUp className="w-3 h-3 text-amber-400" /> : <ChevronDown className="w-3 h-3 text-amber-400" />) : <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+                  </div>
+                </th>
+
                 <th className="py-3 px-3 font-bold text-center">
                   <span>Medias (20/50/200)</span>
                 </th>
@@ -1245,7 +1356,7 @@ export const TradFiScannerTab: React.FC<TradFiScannerTabProps> = ({
             <tbody className="divide-y divide-slate-800/60">
               {sortedItems.length === 0 ? (
                 <tr>
-                  <td colSpan={12} className="py-12 text-center text-slate-500 font-mono">
+                  <td colSpan={13} className="py-12 text-center text-slate-500 font-mono">
                     <p className="text-sm">No se encontraron activos que cumplan con los criterios seleccionados.</p>
                     <button
                       onClick={() => {
@@ -1261,9 +1372,6 @@ export const TradFiScannerTab: React.FC<TradFiScannerTabProps> = ({
                 </tr>
               ) : (
                 sortedItems.map(item => {
-                  const isBull = item.signal === 'LONG';
-                  const isBear = item.signal === 'SHORT';
-
                   // 52W percentage positioning
                   const range52 = (item.high52w || 1) - (item.low52w || 0);
                   const pos52 = range52 > 0 ? Math.max(0, Math.min(100, ((item.price - (item.low52w || 0)) / range52) * 100)) : 50;
@@ -1345,9 +1453,9 @@ export const TradFiScannerTab: React.FC<TradFiScannerTabProps> = ({
                         <div className="inline-flex flex-col items-center">
                           <span
                             className={`font-bold ${
-                              (item.rsi14d || 50) <= 35
+                              (item.rsi14d || 50) <= 30
                                 ? 'text-emerald-400'
-                                : (item.rsi14d || 50) >= 68
+                                : (item.rsi14d || 50) >= 70
                                 ? 'text-red-400'
                                 : 'text-slate-300'
                             }`}
@@ -1357,9 +1465,9 @@ export const TradFiScannerTab: React.FC<TradFiScannerTabProps> = ({
                           <div className="w-10 h-1 bg-slate-800 rounded-full mt-1 overflow-hidden">
                             <div
                               className={`h-full ${
-                                (item.rsi14d || 50) <= 35
+                                (item.rsi14d || 50) <= 30
                                   ? 'bg-emerald-500'
-                                  : (item.rsi14d || 50) >= 68
+                                  : (item.rsi14d || 50) >= 70
                                   ? 'bg-red-500'
                                   : 'bg-amber-500'
                               }`}
@@ -1369,7 +1477,34 @@ export const TradFiScannerTab: React.FC<TradFiScannerTabProps> = ({
                         </div>
                       </td>
 
-                      {/* 7. Medias Móviles (SMA 20/50/200) */}
+                      {/* 7. Tendencia */}
+                      <td className="py-3 px-3 text-center">
+                        <span
+                          className={`px-2 py-0.5 rounded text-[11px] font-bold inline-flex items-center gap-1 ${
+                            item.trend === 'Alcista' || item.signal === 'LONG'
+                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                              : item.trend === 'Bajista' || item.signal === 'SHORT'
+                              ? 'bg-red-500/20 text-red-300 border border-red-500/40'
+                              : 'bg-slate-800 text-slate-400'
+                          }`}
+                        >
+                          {item.trend === 'Alcista' || item.signal === 'LONG' ? (
+                            <>
+                              <TrendingUp className="w-3 h-3 text-emerald-400" />
+                              Alcista
+                            </>
+                          ) : item.trend === 'Bajista' || item.signal === 'SHORT' ? (
+                            <>
+                              <TrendingDown className="w-3 h-3 text-red-400" />
+                              Bajista
+                            </>
+                          ) : (
+                            'Neutral'
+                          )}
+                        </span>
+                      </td>
+
+                      {/* 8. Medias Móviles (SMA 20/50/200) */}
                       <td className="py-3 px-3 text-center">
                         <div className="flex items-center justify-center gap-1 text-[10px]">
                           <span
@@ -1405,7 +1540,7 @@ export const TradFiScannerTab: React.FC<TradFiScannerTabProps> = ({
                         </div>
                       </td>
 
-                      {/* 8. Rango 52S */}
+                      {/* 9. Rango 52S */}
                       <td className="py-3 px-3 text-center">
                         <div className="w-20 mx-auto">
                           <div className="flex justify-between text-[9px] text-slate-500 mb-0.5">
@@ -1424,13 +1559,13 @@ export const TradFiScannerTab: React.FC<TradFiScannerTabProps> = ({
                         </div>
                       </td>
 
-                      {/* 9. Cap / Vol */}
+                      {/* 10. Cap / Vol */}
                       <td className="py-3 px-3 text-right">
                         <div className="font-bold text-slate-200">{fmtCap(item.marketCap)}</div>
                         <div className="text-[10px] text-slate-500">Vol: {fmtVol(item.avgVolume)}</div>
                       </td>
 
-                      {/* 10. CANSLIM (EPS / ROE) */}
+                      {/* 11. CANSLIM (EPS / ROE) */}
                       <td className="py-3 px-3 text-right">
                         <div className="font-bold text-emerald-400">
                           EPS +{item.epsGrowthYear || 0}%
@@ -1440,7 +1575,7 @@ export const TradFiScannerTab: React.FC<TradFiScannerTabProps> = ({
                         </div>
                       </td>
 
-                      {/* 11. Estrategias Cumplidas */}
+                      {/* 12. Estrategias Cumplidas */}
                       <td className="py-3 px-3 text-center">
                         <div className="flex flex-wrap items-center justify-center gap-1 max-w-[130px] mx-auto">
                           {item.isBreakout && (
@@ -1469,7 +1604,7 @@ export const TradFiScannerTab: React.FC<TradFiScannerTabProps> = ({
                         </div>
                       </td>
 
-                      {/* 12. Acción Rápida */}
+                      {/* 13. Acción Rápida */}
                       <td className="py-3 px-4 text-center">
                         <button
                           onClick={() => onSelectSymbol(item.symbol)}
