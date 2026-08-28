@@ -36,6 +36,7 @@ import { MarketScannerTab } from './components/MarketScannerTab';
 import { TradingJournalTab } from './components/TradingJournalTab';
 import { BinanceWalletTab } from './components/BinanceWalletTab';
 import { TradFiMonitorTab } from './components/TradFiMonitorTab';
+import { TradFiScannerTab } from './components/TradFiScannerTab';
 import { BinanceOrderModal } from './components/BinanceOrderModal';
 import { CyclesModal } from './components/CyclesModal';
 import { LogTerminal } from './components/LogTerminal';
@@ -49,13 +50,14 @@ import {
   Waves,
   ShieldAlert,
   Globe,
+  Landmark,
   TrendingUp,
   ArrowUpRight,
   ArrowDownRight,
 } from 'lucide-react';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'analysis' | 'scanner' | 'tradfi' | 'journal' | 'binance'>('analysis');
+  const [activeTab, setActiveTab] = useState<'analysis' | 'tradfi_scanner' | 'scanner' | 'tradfi' | 'journal' | 'binance'>('analysis');
   const [symbolInput, setSymbolInput] = useState<string>('BTCUSDT');
   const [activeSymbol, setActiveSymbol] = useState<string>('BTCUSDT');
   const [isLoadingMarket, setIsLoadingMarket] = useState<boolean>(false);
@@ -484,7 +486,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* Geometric Navigation Tabs (5 Core Views) */}
+          {/* Geometric Navigation Tabs (6 Core Views) */}
           <nav className="flex items-center gap-3 sm:gap-5 text-xs font-semibold uppercase tracking-wider overflow-x-auto py-1">
             <button
               onClick={() => setActiveTab('analysis')}
@@ -496,6 +498,23 @@ export default function App() {
             >
               <BarChart3 className="w-3.5 h-3.5" />
               <span>Análisis & Order Flow</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('tradfi_scanner')}
+              className={`py-2 px-1 border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                activeTab === 'tradfi_scanner'
+                  ? 'border-amber-500 text-slate-100 font-bold'
+                  : 'border-transparent text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Landmark className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+              <span className="flex items-center gap-1.5">
+                <span>Escáner TradFiUSDT</span>
+                <span className="bg-amber-500/20 text-amber-300 text-[9px] px-1 py-0.2 rounded font-mono font-bold border border-amber-500/30">
+                  FUTURES
+                </span>
+              </span>
             </button>
 
             <button
@@ -522,7 +541,7 @@ export default function App() {
               }`}
             >
               <Radio className="w-3.5 h-3.5" />
-              <span>Escáner Multi-Par</span>
+              <span>Escáner Cripto</span>
             </button>
 
             <button
@@ -760,7 +779,20 @@ export default function App() {
           </div>
         )}
 
-        {/* Tab 2: TradFi & Macro Matrix Monitor */}
+        {/* Tab 2: TradFiUSDT Binance Futures Multi-Pair Scanner */}
+        {activeTab === 'tradfi_scanner' && (
+          <TradFiScannerTab
+            onSelectSymbol={sym => {
+              setActiveSymbol(sym);
+              setSymbolInput(sym);
+              setActiveTab('analysis');
+              runAutoAnalyze(sym);
+            }}
+            onLogMessage={addLog}
+          />
+        )}
+
+        {/* Tab 3: TradFi & Macro Matrix Monitor */}
         {activeTab === 'tradfi' && (
           <TradFiMonitorTab
             currentBtcPrice={currentPrice || undefined}
@@ -770,6 +802,7 @@ export default function App() {
               setActiveTab('analysis');
               runAutoAnalyze(sym);
             }}
+            onOpenTradFiScanner={() => setActiveTab('tradfi_scanner')}
             onLogMessage={addLog}
           />
         )}

@@ -226,6 +226,22 @@ export interface ScannerItem {
   lastUpdated: number;
 }
 
+export interface TradFiScannerItem extends ScannerItem {
+  tradfiCategory: 'COMMODITIES' | 'FOREX' | 'RWA_TREASURIES' | 'EQUITY_INDICES';
+  categoryLabel: string;
+  underlyingName: string;
+  underlyingAsset: string;
+  contractType: string;
+  fundingRate: number;
+  predictedFundingRate?: number;
+  high24h: number;
+  low24h: number;
+  dxyCorrelation: number;
+  spxCorrelation: number;
+  btcCorrelation: number;
+  macroImpact: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
+}
+
 // 4. Trading Journal & Performance Types
 export interface JournalEntry {
   id: string;

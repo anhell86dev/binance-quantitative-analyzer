@@ -19,17 +19,20 @@ import {
   ArrowDownRight,
   Info,
   Sliders,
+  Landmark,
 } from 'lucide-react';
 
 interface TradFiMonitorTabProps {
   currentBtcPrice?: number;
   onSelectCryptoSymbol?: (symbol: string) => void;
+  onOpenTradFiScanner?: () => void;
   onLogMessage?: (msg: string, type: 'info' | 'success' | 'warn' | 'error') => void;
 }
 
 export const TradFiMonitorTab: React.FC<TradFiMonitorTabProps> = ({
   currentBtcPrice,
   onSelectCryptoSymbol,
+  onOpenTradFiScanner,
   onLogMessage,
 }) => {
   const [data, setData] = useState<TradFiDashboardData | null>(null);
@@ -116,6 +119,16 @@ export const TradFiMonitorTab: React.FC<TradFiMonitorTabProps> = ({
           </div>
 
           <div className="flex items-center gap-3">
+            {onOpenTradFiScanner && (
+              <button
+                onClick={onOpenTradFiScanner}
+                className="bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs px-3.5 py-2 rounded-lg font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+              >
+                <Landmark className="w-3.5 h-3.5" />
+                <span>Abrir Escáner TradFiUSDT</span>
+              </button>
+            )}
+
             <button
               onClick={() => loadData()}
               disabled={isLoading}

@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Rocket,
   Grid,
+  Landmark,
 } from 'lucide-react';
 
 export interface CategoryDef {
@@ -55,8 +56,16 @@ export const SCANNER_CATEGORIES: CategoryDef[] = [
     symbols: ['LINKUSDT', 'UNIUSDT', 'AAVEUSDT', 'PENDLEUSDT', 'INJUSDT', 'ONDOUSDT', 'CRVUSDT'],
   },
   {
+    id: 'TRADFI_COMMODITIES',
+    name: '4. TradFi, Oro & Forex FX',
+    shortName: 'TradFi & FX',
+    icon: Landmark,
+    color: 'text-amber-300 border-amber-500/30 bg-amber-500/10',
+    symbols: ['PAXGUSDT', 'EURUSDT', 'GBPUSDT', 'JPYUSDT', 'ONDOUSDT', 'PENDLEUSDT', 'MKRUSDT', 'AAVEUSDT', 'LINKUSDT', 'ENAUSDT'],
+  },
+  {
     id: 'MEMES_MOMENTUM',
-    name: '4. Meme Coins & Alta Beta',
+    name: '5. Meme Coins & Alta Beta',
     shortName: 'Memes & Beta',
     icon: Rocket,
     color: 'text-pink-400 border-pink-500/30 bg-pink-500/10',
@@ -64,7 +73,7 @@ export const SCANNER_CATEGORIES: CategoryDef[] = [
   },
   {
     id: 'L2_MODULAR',
-    name: '5. Layer 2 & Infraestructura Modular',
+    name: '6. Layer 2 & Infraestructura Modular',
     shortName: 'Layer 2 & Modular',
     icon: Grid,
     color: 'text-indigo-400 border-indigo-500/30 bg-indigo-500/10',
