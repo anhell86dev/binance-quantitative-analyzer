@@ -72,6 +72,9 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'binance' | 'analysis' | 'tradfi_scanner' | 'tradfi' | 'scanner' | 'journal'>('binance');
   const [symbolInput, setSymbolInput] = useState<string>('BTCUSDT');
   const [activeSymbol, setActiveSymbol] = useState<string>('BTCUSDT');
+  const symbolInputRef = useRef<string>('BTCUSDT');
+  const activeSymbolRef = useRef<string>('BTCUSDT');
+  const hasInitializedRef = useRef<boolean>(false);
   const [isLoadingMarket, setIsLoadingMarket] = useState<boolean>(false);
   const [symbolValidationMsg, setSymbolValidationMsg] = useState<{
     text: string;
@@ -248,7 +251,7 @@ export default function App() {
   }, [addLog]);
 
   // Calculate Indicator Matrix & S/R Pivots
-  const updateCalculations = useCallback((candlesMap: Record<string, Candle[]>, price: number, rvolVal: number | null) => {
+  const updateCalculations = useCallback((candlesMap: Record<string, Candle[]>, price: number, rvolVal: number | null, symbolForStrat?: string) => {
     const timeframes: { id: '1d' | '4h' | '1h' | '15m' | '5m'; label: string; role: string; tfDiv: number }[] = [
       { id: '1d', label: '1D', role: 'Contexto macro', tfDiv: 1 },
       { id: '4h', label: '4H', role: 'Dirección principal', tfDiv: 6 },
@@ -306,8 +309,9 @@ export default function App() {
     const trend1d = rows.find(r => r.tf === '1D')?.trend || '---';
     const trend4h = rows.find(r => r.tf === '4H')?.trend || '---';
 
+    const currentSym = symbolForStrat || activeSymbolRef.current || 'BTCUSDT';
     const strats = generateTradingStrategies({
-      symbol: activeSymbol,
+      symbol: currentSym,
       currentPrice: price,
       candles1d: candlesMap['1d'] || [],
       candles4h: candlesMap['4h'] || [],
@@ -321,15 +325,21 @@ export default function App() {
     });
 
     setStrategies(strats);
-  }, [activeSymbol]);
+  }, []);
 
   // Main Market Data Fetcher & Analyzer
-  const runAutoAnalyze = async (symbolOverride?: string) => {
-    const s = (symbolOverride || symbolInput).trim().toUpperCase();
+  const runAutoAnalyze = useCallback(async (symbolOverride?: string, shouldSwitchToAnalysisTab: boolean = false) => {
+    const s = (symbolOverride || symbolInputRef.current || activeSymbolRef.current || 'BTCUSDT').trim().toUpperCase();
     if (!s) return;
 
+    if (shouldSwitchToAnalysisTab) {
+      setActiveTab('analysis');
+    }
+
     setActiveSymbol(s);
+    activeSymbolRef.current = s;
     setSymbolInput(s);
+    symbolInputRef.current = s;
     setIsLoadingMarket(true);
     setSymbolValidationMsg({ text: `Analizando ${s} en Binance Futures...`, type: 'validating' });
     addLog(`Iniciando escaneo multi-temporal para ${s}...`, 'info');
@@ -364,7 +374,7 @@ export default function App() {
       setRvol5m(rv);
 
       // Update indicator matrix & plan
-      updateCalculations(marketData.candles, p, rv);
+      updateCalculations(marketData.candles, p, rv, s);
 
       // Setup Live stream
       setupPriceStream(s);
@@ -378,11 +388,11 @@ export default function App() {
     } finally {
       setIsLoadingMarket(false);
     }
-  };
+  }, [addLog, updateCalculations, setupPriceStream]);
 
   // Validate Symbol Real Time
   const handleValidateSymbol = async () => {
-    const s = symbolInput.trim().toUpperCase();
+    const s = (symbolInputRef.current || symbolInput).trim().toUpperCase();
     if (!s) return;
 
     setSymbolValidationMsg({ text: `Validando ${s}...`, type: 'validating' });
@@ -402,13 +412,14 @@ export default function App() {
   };
 
   // Fetch Binance Account / Wallet Data
-  const syncBinanceWallet = useCallback(async () => {
+  const syncBinanceWallet = useCallback(async (symbolOverride?: string) => {
     setIsLoadingBinance(true);
     addLog('Sincronizando balances y posiciones con Binance...', 'info');
 
     try {
+      const sym = symbolOverride || activeSymbolRef.current || 'BTCUSDT';
       const creds = customApiKey && customApiSecret ? { apiKey: customApiKey, apiSecret: customApiSecret } : undefined;
-      const data = await fetchBinanceDashboard(activeSymbol, creds);
+      const data = await fetchBinanceDashboard(sym, creds);
 
       if (!data) throw new Error('No se recibieron datos de la billetera');
 
@@ -423,7 +434,7 @@ export default function App() {
     } finally {
       setIsLoadingBinance(false);
     }
-  }, [activeSymbol, customApiKey, customApiSecret, addLog]);
+  }, [customApiKey, customApiSecret, addLog]);
 
   // Execute Live Trade
   const handleExecuteLiveTrade = async (params: any) => {
@@ -463,9 +474,12 @@ export default function App() {
 
   // Run initial analyze on mount and sync wallet if authenticated
   useEffect(() => {
-    runAutoAnalyze('BTCUSDT');
-    if (isAuthenticated) {
-      syncBinanceWallet();
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      runAutoAnalyze('BTCUSDT');
+      if (isAuthenticated) {
+        syncBinanceWallet('BTCUSDT');
+      }
     }
 
     return () => {
@@ -473,7 +487,7 @@ export default function App() {
       if (oiTimerRef.current) clearInterval(oiTimerRef.current);
       if (scannerTimerRef.current) clearTimeout(scannerTimerRef.current);
     };
-  }, [isAuthenticated, syncBinanceWallet]);
+  }, [isAuthenticated, runAutoAnalyze, syncBinanceWallet]);
 
   // Export analysis JSON
   const handleExportJson = () => {
@@ -499,7 +513,7 @@ export default function App() {
   };
 
   const handleReset = () => {
-    runAutoAnalyze(activeSymbol);
+    runAutoAnalyze(activeSymbol, false);
   };
 
   if (!isAuthenticated) {
@@ -636,16 +650,23 @@ export default function App() {
 
           {/* Symbol Search, Action & Disconnect */}
           <div className="flex items-center gap-2 flex-grow sm:flex-grow-0">
-            <div className="relative flex-1 sm:w-44">
+            <div className="relative flex-1 sm:w-48">
               <input
                 id="symbolInput"
                 type="text"
                 value={symbolInput}
-                onChange={e => setSymbolInput(e.target.value.toUpperCase())}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') runAutoAnalyze();
+                onChange={e => {
+                  const val = e.target.value.toUpperCase();
+                  setSymbolInput(val);
+                  symbolInputRef.current = val;
                 }}
-                placeholder="Ej: BTCUSDT"
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    runAutoAnalyze(symbolInput, true);
+                  }
+                }}
+                placeholder="Ej: ETHUSDT, SOLUSDT..."
                 className="w-full bg-[#14171A] border border-[#2B313A] focus:border-[#F0B90B] focus:outline-none rounded-lg px-3 py-2 text-xs text-slate-100 font-mono uppercase tracking-wider placeholder:text-slate-500 transition-colors"
               />
             </div>
@@ -660,7 +681,7 @@ export default function App() {
             {/* Dynamic Binance Yellow Action Button */}
             <button
               id="btnAuto"
-              onClick={() => runAutoAnalyze()}
+              onClick={() => runAutoAnalyze(symbolInput, true)}
               disabled={isLoadingMarket}
               className="bg-[#F0B90B] hover:bg-[#F0B90B]/90 disabled:opacity-50 text-[#0B0E11] text-xs px-4 py-2 rounded-lg font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-[0_0_12px_rgba(240,185,11,0.3)] hover:shadow-[0_0_18px_rgba(240,185,11,0.5)] transition-all cursor-pointer active:scale-95"
             >
@@ -829,11 +850,9 @@ export default function App() {
               apiKey={customApiKey}
               apiSecret={customApiSecret}
               onSelectSymbol={sym => {
-                setActiveSymbol(sym);
-                setSymbolInput(sym);
-                runAutoAnalyze(sym);
+                runAutoAnalyze(sym, true);
               }}
-              onTradeExecuted={syncBinanceWallet}
+              onTradeExecuted={() => syncBinanceWallet()}
               onLogMessage={addLog}
             />
 
@@ -856,10 +875,7 @@ export default function App() {
         {activeTab === 'tradfi_scanner' && (
           <TradFiScannerTab
             onSelectSymbol={sym => {
-              setActiveSymbol(sym);
-              setSymbolInput(sym);
-              setActiveTab('analysis');
-              runAutoAnalyze(sym);
+              runAutoAnalyze(sym, true);
             }}
             onLogMessage={addLog}
           />
@@ -870,10 +886,7 @@ export default function App() {
           <TradFiMonitorTab
             currentBtcPrice={currentPrice || undefined}
             onSelectCryptoSymbol={sym => {
-              setActiveSymbol(sym);
-              setSymbolInput(sym);
-              setActiveTab('analysis');
-              runAutoAnalyze(sym);
+              runAutoAnalyze(sym, true);
             }}
             onOpenTradFiScanner={() => setActiveTab('tradfi_scanner')}
             onLogMessage={addLog}
@@ -884,10 +897,7 @@ export default function App() {
         {activeTab === 'scanner' && (
           <MarketScannerTab
             onSelectSymbol={sym => {
-              setActiveSymbol(sym);
-              setSymbolInput(sym);
-              setActiveTab('analysis');
-              runAutoAnalyze(sym);
+              runAutoAnalyze(sym, true);
             }}
             onLogMessage={addLog}
           />
